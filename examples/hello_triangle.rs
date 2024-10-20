@@ -51,6 +51,7 @@ fn main() -> Result<()> {
 
     gl_ctx.run_event_loop(|ctx, event| {
         let mut frame = ctx.new_frame();
+
         match event {
             None => (),
             Some(win_event) => match win_event {

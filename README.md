@@ -18,6 +18,7 @@ A work-in-progress OpenGL library for Rust built on top of [gl](https://docs.rs/
 ## Demo
 
 ```rust
+use glfw::{Key, Modifiers, WindowEvent};
 use gloam::{
     context::{GLContext, GLContextConfig},
     model::{primitives::Primitive, usage::Usage, ModelBuilder, VertexAttribute},
@@ -70,6 +71,7 @@ fn main() -> Result<()> {
 
     gl_ctx.run_event_loop(|ctx, event| {
         let mut frame = ctx.new_frame();
+
         match event {
             None => (),
             Some(win_event) => match win_event {
