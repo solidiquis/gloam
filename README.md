@@ -89,3 +89,5 @@ fn main() -> Result<()> {
     })
 }
 ```
+
+<img src="https://github.com/solidiquis/gloam/blob/master/screenshots/hello_triangle.png?raw=true">
