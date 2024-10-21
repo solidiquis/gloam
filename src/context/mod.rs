@@ -53,7 +53,7 @@ impl GLContext {
 
         let (mut window, events_rx) = glfw_obj
             .create_window(initial_width, initial_height, title, window_mode)
-            .ok_or(Error::Misc("failed to initialize window"))?;
+            .ok_or(Error::Misc("failed to initialize window".to_string()))?;
 
         gl::load_with(|sym| window.get_proc_address(sym));
         glfw_obj.make_context_current(Some(&window));

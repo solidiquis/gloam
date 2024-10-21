@@ -1,5 +1,13 @@
 use thiserror::Error;
 
+#[macro_export]
+macro_rules! misc_error {
+    ($e:expr) => {
+        Error::Misc(format!($e))
+    };
+}
+pub use misc_error;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
@@ -37,7 +45,7 @@ pub enum Error {
     Boxed(BoxError),
 
     #[error("{0}")]
-    Misc(&'static str),
+    Misc(String),
 }
 
 impl Error {
