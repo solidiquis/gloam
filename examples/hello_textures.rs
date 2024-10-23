@@ -58,23 +58,23 @@ fn main() -> Result<()> {
         .link()?;
 
     let texture_wood_src = PathBuf::new().join("examples").join("hello_textures.jpg");
-    let texture_wood = TextureBuilder::new_2d_rgba8(texture_wood_src)
-        .map(|b| b.s_wrap(TextureWrapParam::Repeat))
-        .map(|b| b.t_wrap(TextureWrapParam::Repeat))
-        .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
-        .map(|b| b.mag_filter(TextureFilterParam::Linear))
-        .and_then(|b| b.build())
+    let texture_wood = TextureBuilder::new_2d_rgba8(texture_wood_src)?
+        .s_wrap(TextureWrapParam::Repeat)
+        .t_wrap(TextureWrapParam::Repeat)
+        .min_filter(TextureFilterParam::LinearMipmapLinear)
+        .mag_filter(TextureFilterParam::Linear)
+        .build()
         .map(Rc::new)?;
 
     let texture_wood_smiley = PathBuf::new()
         .join("examples")
         .join("hello_textures_smiley.png");
-    let texture_smiley = TextureBuilder::new_2d_rgba8(texture_wood_smiley)
-        .map(|b| b.s_wrap(TextureWrapParam::Repeat))
-        .map(|b| b.t_wrap(TextureWrapParam::Repeat))
-        .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
-        .map(|b| b.mag_filter(TextureFilterParam::Linear))
-        .and_then(|b| b.build())
+    let texture_smiley = TextureBuilder::new_2d_rgba8(texture_wood_smiley)?
+        .s_wrap(TextureWrapParam::Repeat)
+        .t_wrap(TextureWrapParam::Repeat)
+        .min_filter(TextureFilterParam::LinearMipmapLinear)
+        .mag_filter(TextureFilterParam::Linear)
+        .build()
         .map(Rc::new)?;
 
     let position_attr = VertexAttribute::new("apos", POSITION_ATTR.to_vec(), 3, false);
