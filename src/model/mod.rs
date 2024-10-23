@@ -1,7 +1,7 @@
 use crate::internal_utils::{as_gl_bool, try_into};
 use crate::shader::program::Program;
 use crate::{Error, Result};
-use std::{ffi::c_void, mem, ptr};
+use std::{ffi::c_void, mem, ops::Drop, ptr};
 
 pub mod usage;
 use usage::Usage;
@@ -9,19 +9,20 @@ use usage::Usage;
 pub mod primitives;
 use primitives::Primitive;
 
-#[derive(Copy, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Model {
     vertex_array_object: gl::types::GLuint,
     element_buffer_object: Option<gl::types::GLuint>,
     program: Program,
+    primitive: Primitive,
     num_vertices: gl::types::GLsizei,
     num_indices: gl::types::GLsizei,
-    primitive: Primitive,
 }
 
 pub struct ModelBuilder {
     position_attributes: VertexAttribute,
     color_attributes: Option<VertexAttribute>,
+    texture_attributes: Option<VertexAttribute>,
     indices: Option<Vec<u32>>,
     usage: Usage,
     program: Program,
@@ -68,9 +69,7 @@ impl Model {
     }
 
     pub(crate) fn use_program(&self) {
-        unsafe {
-            gl::UseProgram(self.program.gl_object_id);
-        }
+        self.program.use_program();
     }
 
     pub(crate) fn detach_program(&self) {
@@ -95,6 +94,20 @@ impl Model {
                 gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, 0);
             }
         }
+    }
+
+    pub(crate) fn unbind_and_detach_program(&self) {
+        self.unbind();
+        self.detach_program();
+    }
+
+    pub(crate) fn bind_and_use_program(&self) {
+        self.bind();
+        self.use_program();
+    }
+
+    pub(crate) fn program(&self) -> &Program {
+        &self.program
     }
 }
 
@@ -121,6 +134,7 @@ impl ModelBuilder {
             indices: None,
             vbo_num_elements: num_values,
             color_attributes: None,
+            texture_attributes: None,
         })
     }
 
@@ -156,11 +170,23 @@ impl ModelBuilder {
         Ok(self)
     }
 
+    pub fn texture_attributes(mut self, vertices: VertexAttribute) -> Result<Self> {
+        let num_values = gl::types::GLsizei::try_from(vertices.values.len()).unwrap();
+        if num_values % vertices.component_size != 0 {
+            return Err(Error::ComponentSizeValuesMistmatch("texture"));
+        }
+        self.vbo_num_elements += num_values;
+        self.stride +=
+            gl::types::GLsizei::try_from(mem::size_of::<f32>()).unwrap() * vertices.component_size;
+        self.texture_attributes = Some(vertices);
+        Ok(self)
+    }
+
     pub fn build(self) -> Result<Model> {
         unsafe { self.build_impl() }
     }
 
-    unsafe fn build_impl(&self) -> Result<Model> {
+    unsafe fn build_impl(self) -> Result<Model> {
         let mut vbo = 0;
         gl::GenBuffers(1, &mut vbo);
         gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
@@ -180,6 +206,17 @@ impl ModelBuilder {
                 });
             }
             attribute_data_iters.push(color_attrs.values.chunks(col_component_size));
+        }
+
+        if let Some(tex_attrs) = self.texture_attributes.as_ref() {
+            let tex_component_size = usize::try_from(tex_attrs.component_size).unwrap();
+            if tex_attrs.values.len() / tex_component_size != num_vertices {
+                return Err(Error::AttributeValuesMistmatch {
+                    attr_name_a: "texture",
+                    attr_name_b: "position",
+                });
+            }
+            attribute_data_iters.push(tex_attrs.values.chunks(tex_component_size));
         }
 
         let vbo_num_elements = usize::try_from(self.vbo_num_elements).unwrap();
@@ -203,7 +240,7 @@ impl ModelBuilder {
         gl::GenVertexArrays(1, &mut vao);
         gl::BindVertexArray(vao);
 
-        let byte_offset = mem::size_of::<f32>() * pos_component_size;
+        let mut byte_offset = mem::size_of::<f32>() * pos_component_size;
 
         /*
          * Position attribute
@@ -245,8 +282,29 @@ impl ModelBuilder {
                 byte_offset as *const c_void,
             );
             gl::EnableVertexAttribArray(col_attr_loc);
-            // For when we texture coordinates are supported
-            // byte_offset += mem::size_of::<f32>() * component_size;
+            byte_offset += mem::size_of::<f32>() * usize::try_from(*component_size).unwrap();
+        }
+
+        /*
+         * Texture attribute
+         */
+        if let Some(VertexAttribute {
+            name,
+            component_size,
+            normalized,
+            ..
+        }) = self.texture_attributes.as_ref()
+        {
+            let tex_attr_loc = self.program.get_attrib_loc(name)?;
+            gl::VertexAttribPointer(
+                tex_attr_loc,
+                *component_size,
+                gl::FLOAT,
+                as_gl_bool(*normalized),
+                self.stride,
+                byte_offset as *const c_void,
+            );
+            gl::EnableVertexAttribArray(tex_attr_loc);
         }
 
         /*
@@ -279,5 +337,19 @@ impl ModelBuilder {
             element_buffer_object,
             primitive: self.primitive,
         })
+    }
+}
+
+impl Drop for Model {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteVertexArrays(1, &self.vertex_array_object);
+            self.vertex_array_object = 0;
+
+            if let Some(ebo) = self.element_buffer_object.as_mut() {
+                gl::DeleteBuffers(1, ebo);
+                *ebo = 0;
+            }
+        }
     }
 }

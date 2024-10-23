@@ -6,6 +6,7 @@ use gloam::{
     Result,
 };
 use std::path::PathBuf;
+use std::rc::Rc;
 
 fn main() -> Result<()> {
     let mut gl_ctx = GLContext::new(GLContextConfig {
@@ -44,14 +45,14 @@ fn main() -> Result<()> {
         false,
     );
 
-    let mut triangle =
-        ModelBuilder::new(program, Usage::Static, Primitive::Triangles, position_attrs)
-            .and_then(|b| b.color_attributes(color_attrs))
-            .and_then(|b| b.build())?;
+    let triangle = ModelBuilder::new(program, Usage::Static, Primitive::Triangles, position_attrs)
+        .and_then(|b| b.color_attributes(color_attrs))
+        .and_then(|b| b.build())
+        .map(Rc::new)?;
+
+    gl_ctx.bind_model(triangle.clone());
 
     gl_ctx.run_event_loop(|ctx, event| {
-        let mut frame = ctx.new_frame();
-
         match event {
             None => (),
             Some(win_event) => match win_event {
@@ -59,13 +60,13 @@ fn main() -> Result<()> {
                     (Modifiers::Super, Key::W) | (_, Key::Escape) => ctx.set_should_close(true),
                     _ => (),
                 },
-                WindowEvent::FramebufferSize(width, height) => frame.viewport(0, 0, width, height),
+                WindowEvent::FramebufferSize(width, height) => ctx.viewport(0, 0, width, height),
                 _ => (),
             },
         }
-        frame.clear_color(0.2, 0.2, 0.2, 0.0);
-        frame.bind_model(&mut triangle);
-        frame.render()?;
+        ctx.clear_color(0.2, 0.2, 0.2, 0.0);
+        ctx.try_render()?;
+        ctx.draw();
 
         Ok(())
     })

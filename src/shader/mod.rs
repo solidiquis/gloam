@@ -33,7 +33,9 @@ impl Shader {
         let file_name = shader_path
             .file_name()
             .map(OsStr::to_string_lossy)
-            .ok_or(Error::Misc("expected shader to have a file name"))?;
+            .ok_or(Error::Misc(
+                "expected shader to have a file name".to_string(),
+            ))?;
         let shader = Self::compile_src(&file_name, &shader_src, typ)?;
         Ok(Self(shader))
     }

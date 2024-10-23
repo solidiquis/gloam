@@ -1,8 +1,9 @@
 use super::Shader;
 use crate::{Error, Result};
-use std::{ffi::CString, mem, ptr};
+use gl::types::GLint;
+use std::{ffi::CString, mem, ops::Drop, ptr};
 
-#[derive(Copy, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Program {
     pub gl_object_id: gl::types::GLuint,
 }
@@ -19,13 +20,13 @@ impl Default for Linker {
 }
 
 impl Program {
-    pub fn use_program(&self) {
+    pub(crate) fn use_program(&self) {
         unsafe {
             gl::UseProgram(self.gl_object_id);
         }
     }
 
-    pub fn get_attrib_loc(&self, attrib: &str) -> Result<gl::types::GLuint> {
+    pub(crate) fn get_attrib_loc(&self, attrib: &str) -> Result<gl::types::GLuint> {
         let c_attrib = CString::new(attrib).map_err(Error::boxed)?;
         unsafe {
             let loc = gl::GetAttribLocation(self.gl_object_id, c_attrib.as_ptr());
@@ -36,7 +37,7 @@ impl Program {
         }
     }
 
-    pub fn get_uniform_loc(&self, uniform: &str) -> Result<gl::types::GLint> {
+    pub(crate) fn get_uniform_loc(&self, uniform: &str) -> Result<gl::types::GLint> {
         let c_uniform = CString::new(uniform).map_err(Error::boxed)?;
         unsafe {
             let loc = gl::GetUniformLocation(self.gl_object_id, c_uniform.as_ptr());
@@ -45,6 +46,14 @@ impl Program {
             }
             Ok(loc)
         }
+    }
+
+    pub(crate) fn set_uniform_i(&self, uniform: &str, value: GLint) -> Result<()> {
+        let loc = self.get_uniform_loc(uniform)?;
+        unsafe {
+            gl::Uniform1i(loc, value);
+        }
+        Ok(())
     }
 }
 
@@ -92,5 +101,14 @@ impl Linker {
                 gl_object_id: self.program,
             })
         }
+    }
+}
+
+impl Drop for Program {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteProgram(self.gl_object_id);
+        }
+        self.gl_object_id = 0;
     }
 }

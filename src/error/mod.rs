@@ -1,5 +1,13 @@
 use thiserror::Error;
 
+#[macro_export]
+macro_rules! misc_error {
+    ($e:expr) => {
+        Error::Misc(format!($e))
+    };
+}
+pub use misc_error;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
@@ -33,11 +41,14 @@ pub enum Error {
     #[error("an error occurred while compiling {shader_name}: {reason}")]
     ShaderCompile { shader_name: String, reason: String },
 
+    #[error("exceeded maximum amount of active textures")]
+    MaxActiveTextures,
+
     #[error("{0}")]
     Boxed(BoxError),
 
     #[error("{0}")]
-    Misc(&'static str),
+    Misc(String),
 }
 
 impl Error {
