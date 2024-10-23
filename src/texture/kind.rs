@@ -1,6 +1,6 @@
 use gl::types::GLenum;
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TextureType {
     Texture1D,
     Texture2D,

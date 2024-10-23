@@ -14,9 +14,13 @@ pub use kind::TextureType;
 pub mod wrap;
 pub use wrap::TextureWrapParam;
 
+pub mod units;
+pub use units::TextureUnit;
+
+#[derive(Debug, Eq, PartialEq, Hash)]
 pub struct Texture {
-    gl_object_id: GLuint,
-    kind: TextureType,
+    pub gl_object_id: GLuint,
+    pub kind: TextureType,
 }
 
 pub struct TextureBuilder {
@@ -194,7 +198,7 @@ impl TextureBuilder {
 impl Drop for Texture {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteTextures(1, &mut self.gl_object_id);
+            gl::DeleteTextures(1, &self.gl_object_id);
         }
         self.gl_object_id = 0;
     }

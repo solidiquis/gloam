@@ -1,60 +1,50 @@
+use crate::context::GLContext;
 use crate::model::Model;
 use crate::texture::Texture;
 use crate::{Error, Result};
 use gl::types::{GLfloat, GLint, GLsizei};
+use std::rc::Rc;
 
 #[derive(Default)]
-pub struct Frame<'a> {
-    bound_model: Option<&'a Model>,
-    close_window: bool,
-}
+pub struct Frame;
 
-impl<'a> Frame<'a> {
+impl Frame {
     pub fn new() -> Self {
-        Self {
-            bound_model: None,
-            close_window: false,
-        }
+        Self {}
     }
 
-    pub fn bind_model(&mut self, model: &'a Model) {
-        model.bind();
-        model.use_program();
-        self.bound_model = Some(model);
+    pub fn bind_model(&mut self, ctx: &mut GLContext, model: Rc<Model>) {
+        ctx.set_bound_model(model);
     }
 
-    pub fn use_texture(&mut self, texture: &Texture, generate_mipmap: bool) {
-        texture.bind();
-        if generate_mipmap {
-            texture.generate_mipmap();
-        }
+    pub fn activate_texture(
+        &mut self,
+        ctx: &mut GLContext,
+        texture: Rc<Texture>,
+        generate_mipmap: bool,
+    ) -> Result<()> {
+        ctx.activate_texture(texture, generate_mipmap)
     }
 
-    pub fn unbind_model(&mut self) {
-        if let Some(model) = self.bound_model.take() {
-            model.unbind();
-            model.detach_program();
-        }
+    pub fn deactivate_texture(&mut self, ctx: &mut GLContext, texture: Rc<Texture>) {
+        ctx.deactivate_texture(texture)
     }
 
-    pub fn render(&mut self) -> Result<()> {
-        let model = self.bound_model.as_mut().ok_or(Error::NoBoundModel)?;
+    pub fn unbind_model(&mut self, ctx: &mut GLContext) {
+        ctx.unbind_model();
+    }
+
+    pub fn render(&mut self, ctx: &mut GLContext) -> Result<()> {
+        let model = ctx.bound_model.as_mut().ok_or(Error::NoBoundModel)?;
         model.render();
         Ok(())
     }
 
-    pub fn clear_color(&self, r: GLfloat, g: GLfloat, b: GLfloat, a: GLfloat) {
-        unsafe {
-            gl::ClearColor(r, g, b, a);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-        }
+    pub fn clear_color(&self, ctx: &mut GLContext, r: GLfloat, g: GLfloat, b: GLfloat, a: GLfloat) {
+        ctx.clear_color(r, g, b, a);
     }
 
-    pub fn viewport(&self, x: GLint, y: GLint, width: GLsizei, height: GLsizei) {
-        unsafe { gl::Viewport(x, y, width, height) }
-    }
-
-    pub fn close_window(&mut self) {
-        self.close_window = true;
+    pub fn viewport(&self, ctx: &GLContext, x: GLint, y: GLint, width: GLsizei, height: GLsizei) {
+        ctx.viewport(x, y, width, height);
     }
 }

@@ -1,8 +1,8 @@
 use super::Shader;
 use crate::{Error, Result};
-use std::{ffi::CString, mem, ptr};
+use std::{ffi::CString, mem, ops::Drop, ptr};
 
-#[derive(Copy, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Program {
     pub gl_object_id: gl::types::GLuint,
 }
@@ -92,5 +92,14 @@ impl Linker {
                 gl_object_id: self.program,
             })
         }
+    }
+}
+
+impl Drop for Program {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteProgram(self.gl_object_id);
+        }
+        self.gl_object_id = 0;
     }
 }

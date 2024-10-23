@@ -41,6 +41,9 @@ pub enum Error {
     #[error("an error occurred while compiling {shader_name}: {reason}")]
     ShaderCompile { shader_name: String, reason: String },
 
+    #[error("exceeded maximum amount of active textures")]
+    MaxActiveTextures,
+
     #[error("{0}")]
     Boxed(BoxError),
 

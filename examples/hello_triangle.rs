@@ -1,11 +1,13 @@
 use glfw::{Key, Modifiers, WindowEvent};
 use gloam::{
     context::{GLContext, GLContextConfig},
+    frame::Frame,
     model::{primitives::Primitive, usage::Usage, ModelBuilder, VertexAttribute},
     shader::{program::Linker, Shader, ShaderType},
     Result,
 };
 use std::path::PathBuf;
+use std::rc::Rc;
 
 fn main() -> Result<()> {
     let mut gl_ctx = GLContext::new(GLContextConfig {
@@ -47,10 +49,11 @@ fn main() -> Result<()> {
     let mut triangle =
         ModelBuilder::new(program, Usage::Static, Primitive::Triangles, position_attrs)
             .and_then(|b| b.color_attributes(color_attrs))
-            .and_then(|b| b.build())?;
+            .and_then(|b| b.build())
+            .map(Rc::new)?;
 
-    gl_ctx.run_event_loop(|ctx, event| {
-        let mut frame = ctx.new_frame();
+    gl_ctx.run_event_loop(|mut ctx, event| {
+        let mut frame = Frame::new();
 
         match event {
             None => (),
@@ -59,13 +62,15 @@ fn main() -> Result<()> {
                     (Modifiers::Super, Key::W) | (_, Key::Escape) => ctx.set_should_close(true),
                     _ => (),
                 },
-                WindowEvent::FramebufferSize(width, height) => frame.viewport(0, 0, width, height),
+                WindowEvent::FramebufferSize(width, height) => {
+                    frame.viewport(&mut ctx, 0, 0, width, height)
+                }
                 _ => (),
             },
         }
-        frame.clear_color(0.2, 0.2, 0.2, 0.0);
-        frame.bind_model(&mut triangle);
-        frame.render()?;
+        frame.clear_color(&mut ctx, 0.2, 0.2, 0.2, 0.0);
+        frame.bind_model(&mut ctx, triangle.clone());
+        frame.render(&mut ctx)?;
 
         Ok(())
     })

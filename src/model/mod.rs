@@ -9,7 +9,7 @@ use usage::Usage;
 pub mod primitives;
 use primitives::Primitive;
 
-/// This should under no circumstance be clone because the drop trait cleans up GPU resources.
+#[derive(Debug, PartialEq, Eq)]
 pub struct Model {
     vertex_array_object: gl::types::GLuint,
     element_buffer_object: Option<gl::types::GLuint>,
@@ -97,6 +97,16 @@ impl Model {
             }
         }
     }
+
+    pub(crate) fn unbind_and_detach_program(&self) {
+        self.unbind();
+        self.detach_program();
+    }
+
+    pub(crate) fn bind_and_use_program(&self) {
+        self.bind();
+        self.use_program();
+    }
 }
 
 impl ModelBuilder {
@@ -174,7 +184,7 @@ impl ModelBuilder {
         unsafe { self.build_impl() }
     }
 
-    unsafe fn build_impl(&self) -> Result<Model> {
+    unsafe fn build_impl(self) -> Result<Model> {
         let mut vbo = 0;
         gl::GenBuffers(1, &mut vbo);
         gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
@@ -331,9 +341,7 @@ impl ModelBuilder {
 impl Drop for Model {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteProgram(self.program.gl_object_id);
-            self.program.gl_object_id = 0;
-            gl::DeleteVertexArrays(1, &mut self.vertex_array_object);
+            gl::DeleteVertexArrays(1, &self.vertex_array_object);
             self.vertex_array_object = 0;
 
             if let Some(ebo) = self.element_buffer_object.as_mut() {

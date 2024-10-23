@@ -9,7 +9,7 @@ pub use try_into;
 #[macro_export]
 macro_rules! try_convert {
     ($i:expr) => {
-        $i.try_into().map_err(crate::Error::boxed)?
+        $i.try_into().map_err($crate::Error::boxed)?
     };
 }
 pub use try_convert;

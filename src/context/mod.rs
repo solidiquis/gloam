@@ -1,14 +1,21 @@
-use crate::frame::Frame;
+use crate::model::Model;
+use crate::texture::{Texture, TextureUnit};
 use crate::{Error, Result};
+use gl::types::{GLenum, GLfloat, GLint, GLsizei};
 use glfw::{
     Context, Glfw, GlfwReceiver, OpenGlProfileHint, PWindow, WindowEvent, WindowHint, WindowMode,
 };
+use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
+use std::rc::Rc;
 
+#[derive(Debug)]
 pub struct GLContext {
     glfw: Glfw,
     window: PWindow,
     events_rx: GlfwReceiver<(f64, WindowEvent)>,
+    pub(crate) bound_model: Option<Rc<Model>>,
+    pub(crate) active_textures: HashMap<Rc<Texture>, TextureUnit>,
 }
 
 pub struct GLContextConfig<'a> {
@@ -62,11 +69,77 @@ impl GLContext {
             window,
             events_rx,
             glfw: glfw_obj,
+            bound_model: None,
+            active_textures: HashMap::new(),
         })
     }
 
-    pub fn new_frame<'a>(&self) -> Frame<'a> {
-        Frame::new()
+    pub(crate) fn set_bound_model(&mut self, model: Rc<Model>) {
+        if self.bound_model.as_ref().is_some_and(|m| *m == model) {
+            return;
+        }
+        model.bind_and_use_program();
+        self.bound_model = Some(model);
+    }
+
+    pub(crate) fn unbind_model(&mut self) {
+        if let Some(model) = self.bound_model.take() {
+            model.unbind_and_detach_program();
+        }
+    }
+
+    pub(crate) fn viewport(&self, x: GLint, y: GLint, width: GLsizei, height: GLsizei) {
+        unsafe { gl::Viewport(x, y, width, height) }
+    }
+
+    pub(crate) fn clear_color(&self, r: GLfloat, g: GLfloat, b: GLfloat, a: GLfloat) {
+        unsafe {
+            gl::ClearColor(r, g, b, a);
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+        }
+    }
+
+    pub(crate) fn activate_texture(
+        &mut self,
+        texture: Rc<Texture>,
+        generate_mipmap: bool,
+    ) -> Result<()> {
+        if self.active_textures.contains_key(&texture) {
+            return Ok(());
+        }
+
+        let unit = if self.active_textures.is_empty() {
+            Some(TextureUnit::Texture0)
+        } else {
+            let active_units = self
+                .active_textures
+                .values()
+                .collect::<HashSet<&TextureUnit>>();
+            TextureUnit::iter().find(|u| !active_units.contains(u))
+        };
+
+        let Some(unused_unit) = unit else {
+            return Err(Error::MaxActiveTextures);
+        };
+
+        unsafe { gl::ActiveTexture(GLenum::from(unused_unit)) }
+        texture.bind();
+        if generate_mipmap {
+            texture.generate_mipmap();
+        }
+        self.active_textures.insert(texture, unused_unit);
+
+        Ok(())
+    }
+
+    pub(crate) fn deactivate_texture(&mut self, texture: Rc<Texture>) {
+        let Some(unit) = self.active_textures.remove(&texture) else {
+            return;
+        };
+        unsafe {
+            gl::ActiveTexture(GLenum::from(unit));
+        }
+        texture.unbind();
     }
 
     pub fn run_event_loop<F>(mut self, mut op: F) -> Result<()>

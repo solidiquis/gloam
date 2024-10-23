@@ -1,12 +1,13 @@
 use glfw::{Key, Modifiers, WindowEvent};
 use gloam::{
     context::{GLContext, GLContextConfig},
+    frame::Frame,
     model::{primitives::Primitive, usage::Usage, ModelBuilder, VertexAttribute},
     shader::{program::Linker, Shader, ShaderType},
     texture::{TextureBuilder, TextureFilterParam, TextureWrapParam},
     Result,
 };
-use std::path::PathBuf;
+use std::{path::PathBuf, rc::Rc};
 
 const POSITION_ATTR: [f32; 12] = [
     0.5, 0.5, 0.0, // top right
@@ -15,9 +16,19 @@ const POSITION_ATTR: [f32; 12] = [
     -0.5, 0.5, 0.0, // top left
 ];
 
-const TEXTURE_ATTR: [f32; 8] = [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];
+const TEXTURE_ATTR: [f32; 8] = [
+    1.0, 1.0, // top right
+    1.0, 0.0, // bottom right
+    0.0, 0.0, // bottom left
+    0.0, 1.0, // bottom right
+];
 
-const COLOR_ATTR: [f32; 12] = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0];
+const COLOR_ATTR: [f32; 12] = [
+    1.0, 0.0, 0.0, // top right
+    0.0, 1.0, 0.0, // bottom right
+    0.0, 0.0, 1.0, // bottom left
+    1.0, 1.0, 0.0, // bottom right
+];
 
 const INDICES: [u32; 6] = [
     0, 1, 3, // first triangle
@@ -49,24 +60,25 @@ fn main() -> Result<()> {
 
     let texture_src = PathBuf::new().join("examples").join("hello_textures.jpg");
 
-    let mut texture = TextureBuilder::new_2d_rgba8(texture_src)
+    let texture = TextureBuilder::new_2d_rgba8(texture_src)
         .map(|b| b.s_wrap(TextureWrapParam::Repeat))
         .map(|b| b.t_wrap(TextureWrapParam::Repeat))
         .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
         .map(|b| b.mag_filter(TextureFilterParam::Linear))
-        .and_then(|b| b.build())?;
+        .and_then(|b| b.build())
+        .map(Rc::new)?;
 
     let position_attr = VertexAttribute::new("apos", POSITION_ATTR.to_vec(), 3, false);
     let texture_attr = VertexAttribute::new("atex", TEXTURE_ATTR.to_vec(), 2, false);
 
-    let mut surface =
-        ModelBuilder::new(program, Usage::Static, Primitive::Triangles, position_attr)
-            .and_then(|b| b.texture_attributes(texture_attr))
-            .and_then(|b| b.indices(INDICES.to_vec()))
-            .and_then(|b| b.build())?;
+    let surface = ModelBuilder::new(program, Usage::Static, Primitive::Triangles, position_attr)
+        .and_then(|b| b.texture_attributes(texture_attr))
+        .and_then(|b| b.indices(INDICES.to_vec()))
+        .and_then(|b| b.build())
+        .map(Rc::new)?;
 
-    gl_context.run_event_loop(|ctx, event| {
-        let mut frame = ctx.new_frame();
+    gl_context.run_event_loop(|mut ctx, event| {
+        let mut frame = Frame::new();
 
         match event {
             None => (),
@@ -75,15 +87,17 @@ fn main() -> Result<()> {
                     (Modifiers::Super, Key::W) | (_, Key::Escape) => ctx.set_should_close(true),
                     _ => (),
                 },
-                WindowEvent::FramebufferSize(width, height) => frame.viewport(0, 0, width, height),
+                WindowEvent::FramebufferSize(width, height) => {
+                    frame.viewport(&ctx, 0, 0, width, height)
+                }
                 _ => (),
             },
         }
 
-        frame.clear_color(0.2, 0.2, 0.2, 0.0);
-        frame.bind_model(&mut surface);
-        frame.use_texture(&mut texture, true);
-        frame.render()?;
+        frame.clear_color(&mut ctx, 0.2, 0.2, 0.2, 0.0);
+        frame.bind_model(&mut ctx, surface.clone());
+        frame.activate_texture(&mut ctx, texture.clone(), true)?;
+        frame.render(&mut ctx)?;
 
         Ok(())
     })
