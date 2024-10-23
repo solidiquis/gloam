@@ -74,7 +74,8 @@ impl GLContext {
         })
     }
 
-    pub(crate) fn set_bound_model(&mut self, model: Rc<Model>) {
+    pub fn bind_model(&mut self, model: Rc<Model>) {
+        // model is already bound
         if self.bound_model.as_ref().is_some_and(|m| *m == model) {
             return;
         }
@@ -82,30 +83,37 @@ impl GLContext {
         self.bound_model = Some(model);
     }
 
-    pub(crate) fn unbind_model(&mut self) {
+    pub fn unbind_model(&mut self) {
         if let Some(model) = self.bound_model.take() {
             model.unbind_and_detach_program();
         }
     }
 
-    pub(crate) fn viewport(&self, x: GLint, y: GLint, width: GLsizei, height: GLsizei) {
+    pub fn viewport(&self, x: GLint, y: GLint, width: GLsizei, height: GLsizei) {
         unsafe { gl::Viewport(x, y, width, height) }
     }
 
-    pub(crate) fn clear_color(&self, r: GLfloat, g: GLfloat, b: GLfloat, a: GLfloat) {
+    pub fn clear_color(&self, r: GLfloat, g: GLfloat, b: GLfloat, a: GLfloat) {
         unsafe {
             gl::ClearColor(r, g, b, a);
             gl::Clear(gl::COLOR_BUFFER_BIT);
         }
     }
 
-    pub(crate) fn activate_texture(
+    pub fn set_uniform_1i<T: Into<GLint>>(&self, uniform: &str, val: T) -> Result<()> {
+        let Some(model) = self.bound_model.as_ref() else {
+            return Err(Error::NoBoundModel);
+        };
+        model.program().set_uniform_i(uniform, val.into())
+    }
+
+    pub fn activate_texture(
         &mut self,
         texture: Rc<Texture>,
         generate_mipmap: bool,
-    ) -> Result<()> {
-        if self.active_textures.contains_key(&texture) {
-            return Ok(());
+    ) -> Result<TextureUnit> {
+        if let Some(unit) = self.active_textures.get(&texture).cloned() {
+            return Ok(unit);
         }
 
         let unit = if self.active_textures.is_empty() {
@@ -129,10 +137,10 @@ impl GLContext {
         }
         self.active_textures.insert(texture, unused_unit);
 
-        Ok(())
+        Ok(unused_unit)
     }
 
-    pub(crate) fn deactivate_texture(&mut self, texture: Rc<Texture>) {
+    pub fn deactivate_texture(&mut self, texture: Rc<Texture>) {
         let Some(unit) = self.active_textures.remove(&texture) else {
             return;
         };
@@ -142,14 +150,25 @@ impl GLContext {
         texture.unbind();
     }
 
-    pub fn run_event_loop<F>(mut self, mut op: F) -> Result<()>
+    pub fn try_render(&self) -> Result<()> {
+        let Some(model) = self.bound_model.as_ref() else {
+            return Err(Error::NoBoundModel);
+        };
+        model.render();
+        Ok(())
+    }
+
+    pub fn draw(&mut self) {
+        self.swap_buffers();
+    }
+
+    pub fn run_event_loop<F>(&mut self, mut op: F) -> Result<()>
     where
         F: FnMut(&mut Self, Option<WindowEvent>) -> Result<()>,
     {
         while !self.should_close() {
             let event = self.events_rx.receive().map(|(_, ev)| ev);
-            op(&mut self, event)?;
-            self.swap_buffers();
+            op(self, event)?;
             self.glfw.poll_events();
         }
         Ok(())

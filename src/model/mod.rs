@@ -69,9 +69,7 @@ impl Model {
     }
 
     pub(crate) fn use_program(&self) {
-        unsafe {
-            gl::UseProgram(self.program.gl_object_id);
-        }
+        self.program.use_program();
     }
 
     pub(crate) fn detach_program(&self) {
@@ -106,6 +104,10 @@ impl Model {
     pub(crate) fn bind_and_use_program(&self) {
         self.bind();
         self.use_program();
+    }
+
+    pub(crate) fn program(&self) -> &Program {
+        &self.program
     }
 }
 

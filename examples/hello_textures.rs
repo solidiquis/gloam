@@ -1,7 +1,6 @@
 use glfw::{Key, Modifiers, WindowEvent};
 use gloam::{
     context::{GLContext, GLContextConfig},
-    frame::Frame,
     model::{primitives::Primitive, usage::Usage, ModelBuilder, VertexAttribute},
     shader::{program::Linker, Shader, ShaderType},
     texture::{TextureBuilder, TextureFilterParam, TextureWrapParam},
@@ -58,9 +57,19 @@ fn main() -> Result<()> {
         .attach_shader(fragment_shader)
         .link()?;
 
-    let texture_src = PathBuf::new().join("examples").join("hello_textures.jpg");
+    let texture_wood_src = PathBuf::new().join("examples").join("hello_textures.jpg");
+    let texture_wood = TextureBuilder::new_2d_rgba8(texture_wood_src)
+        .map(|b| b.s_wrap(TextureWrapParam::Repeat))
+        .map(|b| b.t_wrap(TextureWrapParam::Repeat))
+        .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
+        .map(|b| b.mag_filter(TextureFilterParam::Linear))
+        .and_then(|b| b.build())
+        .map(Rc::new)?;
 
-    let texture = TextureBuilder::new_2d_rgba8(texture_src)
+    let texture_wood_smiley = PathBuf::new()
+        .join("examples")
+        .join("hello_textures_smiley.png");
+    let texture_smiley = TextureBuilder::new_2d_rgba8(texture_wood_smiley)
         .map(|b| b.s_wrap(TextureWrapParam::Repeat))
         .map(|b| b.t_wrap(TextureWrapParam::Repeat))
         .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
@@ -69,17 +78,24 @@ fn main() -> Result<()> {
         .map(Rc::new)?;
 
     let position_attr = VertexAttribute::new("apos", POSITION_ATTR.to_vec(), 3, false);
+    let color_attr = VertexAttribute::new("acol", COLOR_ATTR.to_vec(), 3, false);
     let texture_attr = VertexAttribute::new("atex", TEXTURE_ATTR.to_vec(), 2, false);
 
     let surface = ModelBuilder::new(program, Usage::Static, Primitive::Triangles, position_attr)
+        .and_then(|b| b.color_attributes(color_attr))
         .and_then(|b| b.texture_attributes(texture_attr))
         .and_then(|b| b.indices(INDICES.to_vec()))
         .and_then(|b| b.build())
         .map(Rc::new)?;
 
-    gl_context.run_event_loop(|mut ctx, event| {
-        let mut frame = Frame::new();
+    gl_context.bind_model(surface.clone());
+    let texture_unit_wood = gl_context.activate_texture(texture_wood.clone(), true)?;
+    let texture_unit_smiley = gl_context.activate_texture(texture_smiley.clone(), true)?;
 
+    gl_context.set_uniform_1i("texture1", texture_unit_wood)?;
+    gl_context.set_uniform_1i("texture2", texture_unit_smiley)?;
+
+    gl_context.run_event_loop(|ctx, event| {
         match event {
             None => (),
             Some(win_event) => match win_event {
@@ -87,17 +103,14 @@ fn main() -> Result<()> {
                     (Modifiers::Super, Key::W) | (_, Key::Escape) => ctx.set_should_close(true),
                     _ => (),
                 },
-                WindowEvent::FramebufferSize(width, height) => {
-                    frame.viewport(&ctx, 0, 0, width, height)
-                }
+                WindowEvent::FramebufferSize(width, height) => ctx.viewport(0, 0, width, height),
                 _ => (),
             },
         }
 
-        frame.clear_color(&mut ctx, 0.2, 0.2, 0.2, 0.0);
-        frame.bind_model(&mut ctx, surface.clone());
-        frame.activate_texture(&mut ctx, texture.clone(), true)?;
-        frame.render(&mut ctx)?;
+        ctx.clear_color(0.2, 0.2, 0.2, 0.0);
+        ctx.try_render()?;
+        ctx.draw();
 
         Ok(())
     })

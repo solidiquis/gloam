@@ -1,6 +1,7 @@
 use crate::internal_utils::try_convert;
 use crate::{misc_error, Error, Result};
 use gl::types::{GLenum, GLuint};
+use image::{DynamicImage, GenericImageView};
 use std::ffi::c_void;
 use std::ops::Drop;
 use std::path::Path;
@@ -59,11 +60,14 @@ impl Texture {
 impl TextureBuilder {
     pub fn new_2d_rgba8<Q: AsRef<Path>>(path: Q) -> Result<Self> {
         let buffer = image::open(path.as_ref())
-            .map(|img| img.to_rgba8())
+            .map(|img| DynamicImage::ImageRgba8(img.to_rgba8()).flipv())
             .map_err(|e| misc_error!("failed to load texture file: {e}"))?;
 
         let (width, height) = buffer.dimensions();
-        let data = buffer.into_raw();
+        let data = buffer
+            .as_rgba8()
+            .map(|b| b.as_raw().clone())
+            .ok_or(misc_error!("failed to load texture"))?;
 
         Ok(TextureBuilder {
             data,

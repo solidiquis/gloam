@@ -1,7 +1,6 @@
 use glfw::{Key, Modifiers, WindowEvent};
 use gloam::{
     context::{GLContext, GLContextConfig},
-    frame::Frame,
     model::{primitives::Primitive, usage::Usage, ModelBuilder, VertexAttribute},
     shader::{program::Linker, Shader, ShaderType},
     Result,
@@ -46,15 +45,14 @@ fn main() -> Result<()> {
         false,
     );
 
-    let mut triangle =
-        ModelBuilder::new(program, Usage::Static, Primitive::Triangles, position_attrs)
-            .and_then(|b| b.color_attributes(color_attrs))
-            .and_then(|b| b.build())
-            .map(Rc::new)?;
+    let triangle = ModelBuilder::new(program, Usage::Static, Primitive::Triangles, position_attrs)
+        .and_then(|b| b.color_attributes(color_attrs))
+        .and_then(|b| b.build())
+        .map(Rc::new)?;
 
-    gl_ctx.run_event_loop(|mut ctx, event| {
-        let mut frame = Frame::new();
+    gl_ctx.bind_model(triangle.clone());
 
+    gl_ctx.run_event_loop(|ctx, event| {
         match event {
             None => (),
             Some(win_event) => match win_event {
@@ -62,15 +60,13 @@ fn main() -> Result<()> {
                     (Modifiers::Super, Key::W) | (_, Key::Escape) => ctx.set_should_close(true),
                     _ => (),
                 },
-                WindowEvent::FramebufferSize(width, height) => {
-                    frame.viewport(&mut ctx, 0, 0, width, height)
-                }
+                WindowEvent::FramebufferSize(width, height) => ctx.viewport(0, 0, width, height),
                 _ => (),
             },
         }
-        frame.clear_color(&mut ctx, 0.2, 0.2, 0.2, 0.0);
-        frame.bind_model(&mut ctx, triangle.clone());
-        frame.render(&mut ctx)?;
+        ctx.clear_color(0.2, 0.2, 0.2, 0.0);
+        ctx.try_render()?;
+        ctx.draw();
 
         Ok(())
     })

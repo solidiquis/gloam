@@ -1,4 +1,4 @@
-use gl::types::GLenum;
+use gl::types::{GLenum, GLint};
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum TextureUnit {
@@ -78,6 +78,29 @@ impl From<TextureUnit> for GLenum {
             TextureUnit::Texture13 => gl::TEXTURE13,
             TextureUnit::Texture14 => gl::TEXTURE14,
             TextureUnit::Texture15 => gl::TEXTURE15,
+        }
+    }
+}
+
+impl From<TextureUnit> for GLint {
+    fn from(value: TextureUnit) -> Self {
+        match value {
+            TextureUnit::Texture0 => 0,
+            TextureUnit::Texture1 => 1,
+            TextureUnit::Texture2 => 2,
+            TextureUnit::Texture3 => 3,
+            TextureUnit::Texture4 => 4,
+            TextureUnit::Texture5 => 5,
+            TextureUnit::Texture6 => 6,
+            TextureUnit::Texture7 => 7,
+            TextureUnit::Texture8 => 8,
+            TextureUnit::Texture9 => 9,
+            TextureUnit::Texture10 => 10,
+            TextureUnit::Texture11 => 11,
+            TextureUnit::Texture12 => 12,
+            TextureUnit::Texture13 => 13,
+            TextureUnit::Texture14 => 14,
+            TextureUnit::Texture15 => 15,
         }
     }
 }
