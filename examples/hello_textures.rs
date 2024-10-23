@@ -107,8 +107,6 @@ fn main() -> Result<()> {
                 _ => (),
             },
         }
-
-        ctx.clear_color(0.2, 0.2, 0.2, 0.0);
         ctx.try_render()?;
         ctx.draw();
 
