@@ -196,6 +196,17 @@ impl ModelBuilder {
             attribute_data_iters.push(color_attrs.values.chunks(col_component_size));
         }
 
+        if let Some(tex_attrs) = self.texture_attributes.as_ref() {
+            let tex_component_size = usize::try_from(tex_attrs.component_size).unwrap();
+            if tex_attrs.values.len() / tex_component_size != num_vertices {
+                return Err(Error::AttributeValuesMistmatch {
+                    attr_name_a: "texture",
+                    attr_name_b: "position",
+                });
+            }
+            attribute_data_iters.push(tex_attrs.values.chunks(tex_component_size));
+        }
+
         let vbo_num_elements = usize::try_from(self.vbo_num_elements).unwrap();
         let mut buffer = Vec::with_capacity(vbo_num_elements);
 
@@ -259,7 +270,29 @@ impl ModelBuilder {
                 byte_offset as *const c_void,
             );
             gl::EnableVertexAttribArray(col_attr_loc);
-            //byte_offset += mem::size_of::<f32>() * component_size;
+            byte_offset += mem::size_of::<f32>() * usize::try_from(*component_size).unwrap();
+        }
+
+        /*
+         * Texture attribute
+         */
+        if let Some(VertexAttribute {
+            name,
+            component_size,
+            normalized,
+            ..
+        }) = self.texture_attributes.as_ref()
+        {
+            let tex_attr_loc = self.program.get_attrib_loc(name)?;
+            gl::VertexAttribPointer(
+                tex_attr_loc,
+                *component_size,
+                gl::FLOAT,
+                as_gl_bool(*normalized),
+                self.stride,
+                byte_offset as *const c_void,
+            );
+            gl::EnableVertexAttribArray(tex_attr_loc);
         }
 
         /*

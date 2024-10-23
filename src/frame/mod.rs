@@ -1,4 +1,5 @@
 use crate::model::Model;
+use crate::texture::Texture;
 use crate::{Error, Result};
 use gl::types::{GLfloat, GLint, GLsizei};
 
@@ -20,6 +21,13 @@ impl<'a> Frame<'a> {
         model.bind();
         model.use_program();
         self.bound_model = Some(model);
+    }
+
+    pub fn use_texture(&mut self, texture: &Texture, generate_mipmap: bool) {
+        texture.bind();
+        if generate_mipmap {
+            texture.generate_mipmap();
+        }
     }
 
     pub fn unbind_model(&mut self) {
