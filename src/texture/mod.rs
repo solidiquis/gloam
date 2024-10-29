@@ -1,10 +1,12 @@
-use crate::internal_utils::try_convert;
-use crate::{misc_error, Error, Result};
+use crate::{
+    context::GLContext,
+    error::{misc_error, Error, Result},
+    internal_utils::try_into,
+    object::{GLObject, GLObjectDescriptor},
+};
 use gl::types::{GLenum, GLuint};
 use image::{DynamicImage, GenericImageView};
-use std::ffi::c_void;
-use std::ops::Drop;
-use std::path::Path;
+use std::{ffi::c_void, ops::Drop, path::Path};
 
 pub mod filter;
 pub use filter::TextureFilterParam;
@@ -108,11 +110,11 @@ impl TextureBuilder {
         self
     }
 
-    pub fn build(self) -> Result<Texture> {
-        unsafe { self.build_impl() }
+    pub fn build(self, ctx: &mut GLContext) -> Result<GLObjectDescriptor> {
+        unsafe { self.build_impl(ctx) }
     }
 
-    unsafe fn build_impl(self) -> Result<Texture> {
+    unsafe fn build_impl(self, ctx: &mut GLContext) -> Result<GLObjectDescriptor> {
         let TextureBuilder {
             data,
             width,
@@ -132,7 +134,7 @@ impl TextureBuilder {
         gl::BindTexture(target, texture);
 
         if let Some(wrap) = s_wrap {
-            gl::TexParameteri(target, gl::TEXTURE_WRAP_S, try_convert!(GLenum::from(wrap)));
+            gl::TexParameteri(target, gl::TEXTURE_WRAP_S, try_into!(GLenum::from(wrap)));
 
             if let TextureWrapParam::ClampToBorder(r, g, b, a) = wrap {
                 let border_color: Vec<f32> = vec![r, g, b, a];
@@ -140,7 +142,7 @@ impl TextureBuilder {
             }
         }
         if let Some(wrap) = t_wrap {
-            gl::TexParameteri(target, gl::TEXTURE_WRAP_T, try_convert!(GLenum::from(wrap)));
+            gl::TexParameteri(target, gl::TEXTURE_WRAP_T, try_into!(GLenum::from(wrap)));
 
             if let TextureWrapParam::ClampToBorder(r, g, b, a) = wrap {
                 let border_color: Vec<f32> = vec![r, g, b, a];
@@ -148,7 +150,7 @@ impl TextureBuilder {
             }
         }
         if let Some(wrap) = r_wrap {
-            gl::TexParameteri(target, gl::TEXTURE_WRAP_R, try_convert!(GLenum::from(wrap)));
+            gl::TexParameteri(target, gl::TEXTURE_WRAP_R, try_into!(GLenum::from(wrap)));
 
             if let TextureWrapParam::ClampToBorder(r, g, b, a) = wrap {
                 let border_color: Vec<f32> = vec![r, g, b, a];
@@ -156,18 +158,10 @@ impl TextureBuilder {
             }
         }
         if let Some(min) = min_filter {
-            gl::TexParameteri(
-                target,
-                gl::TEXTURE_MIN_FILTER,
-                try_convert!(GLenum::from(min)),
-            );
+            gl::TexParameteri(target, gl::TEXTURE_MIN_FILTER, try_into!(GLenum::from(min)));
         }
         if let Some(mag) = mag_filter {
-            gl::TexParameteri(
-                target,
-                gl::TEXTURE_MAG_FILTER,
-                try_convert!(GLenum::from(mag)),
-            );
+            gl::TexParameteri(target, gl::TEXTURE_MAG_FILTER, try_into!(GLenum::from(mag)));
         }
 
         match kind {
@@ -175,11 +169,11 @@ impl TextureBuilder {
             TextureType::Texture2D => gl::TexImage2D(
                 target,
                 0,
-                try_convert!(format),
-                try_convert!(width),
-                try_convert!(height),
+                try_into!(format),
+                try_into!(width),
+                try_into!(height),
                 0,
-                try_convert!(format),
+                try_into!(format),
                 gl::UNSIGNED_BYTE,
                 data.as_ptr() as *const c_void,
             ),
@@ -192,10 +186,12 @@ impl TextureBuilder {
         }
 
         gl::BindTexture(target, 0);
-        Ok(Texture {
+        let texture = Texture {
             kind,
             gl_object_id: texture,
-        })
+        };
+        let obj_desc = ctx.register_object(GLObject::Texture(texture));
+        Ok(obj_desc)
     }
 }
 

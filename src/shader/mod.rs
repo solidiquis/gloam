@@ -9,6 +9,7 @@ use std::{
 };
 
 pub mod program;
+pub use program::Program;
 
 pub struct Shader(gl::types::GLuint);
 

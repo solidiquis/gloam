@@ -1,3 +1,4 @@
+use crate::error::{Error, Result};
 use gl::types::{GLenum, GLint};
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -18,45 +19,22 @@ pub enum TextureUnit {
     Texture13,
     Texture14,
     Texture15,
-}
-
-#[derive(Default)]
-pub struct TextureUnitIter {
-    current_unit: u8,
-}
-
-impl TextureUnit {
-    pub fn iter() -> TextureUnitIter {
-        TextureUnitIter::default()
-    }
-}
-
-impl Iterator for TextureUnitIter {
-    type Item = TextureUnit;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let unit = match self.current_unit {
-            0 => Some(TextureUnit::Texture0),
-            1 => Some(TextureUnit::Texture1),
-            2 => Some(TextureUnit::Texture2),
-            3 => Some(TextureUnit::Texture3),
-            4 => Some(TextureUnit::Texture4),
-            5 => Some(TextureUnit::Texture5),
-            6 => Some(TextureUnit::Texture6),
-            7 => Some(TextureUnit::Texture7),
-            8 => Some(TextureUnit::Texture8),
-            9 => Some(TextureUnit::Texture9),
-            10 => Some(TextureUnit::Texture10),
-            11 => Some(TextureUnit::Texture11),
-            12 => Some(TextureUnit::Texture12),
-            13 => Some(TextureUnit::Texture13),
-            14 => Some(TextureUnit::Texture14),
-            15 => Some(TextureUnit::Texture15),
-            _ => None,
-        };
-        self.current_unit += 1;
-        unit
-    }
+    Texture16,
+    Texture17,
+    Texture18,
+    Texture19,
+    Texture20,
+    Texture21,
+    Texture22,
+    Texture23,
+    Texture24,
+    Texture25,
+    Texture26,
+    Texture27,
+    Texture28,
+    Texture29,
+    Texture30,
+    Texture31,
 }
 
 impl From<TextureUnit> for GLenum {
@@ -78,6 +56,22 @@ impl From<TextureUnit> for GLenum {
             TextureUnit::Texture13 => gl::TEXTURE13,
             TextureUnit::Texture14 => gl::TEXTURE14,
             TextureUnit::Texture15 => gl::TEXTURE15,
+            TextureUnit::Texture16 => gl::TEXTURE16,
+            TextureUnit::Texture17 => gl::TEXTURE17,
+            TextureUnit::Texture18 => gl::TEXTURE18,
+            TextureUnit::Texture19 => gl::TEXTURE19,
+            TextureUnit::Texture20 => gl::TEXTURE20,
+            TextureUnit::Texture21 => gl::TEXTURE21,
+            TextureUnit::Texture22 => gl::TEXTURE22,
+            TextureUnit::Texture23 => gl::TEXTURE23,
+            TextureUnit::Texture24 => gl::TEXTURE24,
+            TextureUnit::Texture25 => gl::TEXTURE25,
+            TextureUnit::Texture26 => gl::TEXTURE26,
+            TextureUnit::Texture27 => gl::TEXTURE27,
+            TextureUnit::Texture28 => gl::TEXTURE28,
+            TextureUnit::Texture29 => gl::TEXTURE29,
+            TextureUnit::Texture30 => gl::TEXTURE30,
+            TextureUnit::Texture31 => gl::TEXTURE31,
         }
     }
 }
@@ -101,6 +95,64 @@ impl From<TextureUnit> for GLint {
             TextureUnit::Texture13 => 13,
             TextureUnit::Texture14 => 14,
             TextureUnit::Texture15 => 15,
+            TextureUnit::Texture16 => 16,
+            TextureUnit::Texture17 => 17,
+            TextureUnit::Texture18 => 18,
+            TextureUnit::Texture19 => 19,
+            TextureUnit::Texture20 => 20,
+            TextureUnit::Texture21 => 21,
+            TextureUnit::Texture22 => 22,
+            TextureUnit::Texture23 => 23,
+            TextureUnit::Texture24 => 24,
+            TextureUnit::Texture25 => 25,
+            TextureUnit::Texture26 => 26,
+            TextureUnit::Texture27 => 27,
+            TextureUnit::Texture28 => 28,
+            TextureUnit::Texture29 => 29,
+            TextureUnit::Texture30 => 30,
+            TextureUnit::Texture31 => 31,
+        }
+    }
+}
+
+impl TryFrom<usize> for TextureUnit {
+    type Error = Error;
+
+    fn try_from(value: usize) -> Result<Self> {
+        match value {
+            0 => Ok(TextureUnit::Texture0),
+            1 => Ok(TextureUnit::Texture1),
+            2 => Ok(TextureUnit::Texture2),
+            3 => Ok(TextureUnit::Texture3),
+            4 => Ok(TextureUnit::Texture4),
+            5 => Ok(TextureUnit::Texture5),
+            6 => Ok(TextureUnit::Texture6),
+            7 => Ok(TextureUnit::Texture7),
+            8 => Ok(TextureUnit::Texture8),
+            9 => Ok(TextureUnit::Texture9),
+            10 => Ok(TextureUnit::Texture10),
+            11 => Ok(TextureUnit::Texture11),
+            12 => Ok(TextureUnit::Texture12),
+            13 => Ok(TextureUnit::Texture13),
+            14 => Ok(TextureUnit::Texture14),
+            15 => Ok(TextureUnit::Texture15),
+            16 => Ok(TextureUnit::Texture16),
+            17 => Ok(TextureUnit::Texture17),
+            18 => Ok(TextureUnit::Texture18),
+            19 => Ok(TextureUnit::Texture19),
+            20 => Ok(TextureUnit::Texture20),
+            21 => Ok(TextureUnit::Texture21),
+            22 => Ok(TextureUnit::Texture22),
+            23 => Ok(TextureUnit::Texture23),
+            24 => Ok(TextureUnit::Texture24),
+            25 => Ok(TextureUnit::Texture25),
+            26 => Ok(TextureUnit::Texture26),
+            27 => Ok(TextureUnit::Texture27),
+            28 => Ok(TextureUnit::Texture28),
+            29 => Ok(TextureUnit::Texture29),
+            30 => Ok(TextureUnit::Texture30),
+            31 => Ok(TextureUnit::Texture31),
+            _ => Err(Error::InvalidTextureUnit(value)),
         }
     }
 }

@@ -1,9 +1,10 @@
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Primitive {
     Points,
     Lines,
     LineStrip,
     LineLoop,
+    #[default]
     Triangles,
     TriangleStrip,
     TriangleFan,
