@@ -1,20 +1,16 @@
 use glfw::{Key, Modifiers, WindowEvent};
 use gloam::{
-    context::{GLContext, GLContextConfig},
-    model::{primitives::Primitive, usage::Usage, ModelBuilder, VertexAttribute},
+    app,
     shader::{program::Linker, Shader, ShaderType},
+    vertex::{Primitive, Usage, VOBInit, VertexObjectBuilder},
     Result,
 };
 use std::path::PathBuf;
-use std::rc::Rc;
 
 fn main() -> Result<()> {
-    let mut gl_ctx = GLContext::new(GLContextConfig {
-        title: "HelloTriangle",
-        ..Default::default()
-    })?;
-    gl_ctx.set_key_polling(true);
-    gl_ctx.set_framebuffer_size_polling(true);
+    let (mut window, mut ctx) = app::init_default_opengl_3_3("HelloTriangle")?;
+    window.set_key_polling(true);
+    window.set_framebuffer_size_polling(true);
 
     let vs_src = PathBuf::new()
         .join("examples")
@@ -29,35 +25,26 @@ fn main() -> Result<()> {
     let program = Linker::new()
         .attach_shader(vertex_shader)
         .attach_shader(fragment_shader)
-        .link()?;
+        .link(&mut ctx)?;
 
-    let position_attrs = VertexAttribute::new(
-        "position",
-        vec![-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0],
-        3,
-        false,
-    );
+    let triangle = VertexObjectBuilder::<VOBInit>::new(Primitive::Triangles, Usage::Static)
+        .attribute(
+            "aPosition",
+            3,
+            &[-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0],
+        )?
+        .attribute("aColor", 3, &[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])?
+        .build(&mut ctx, program)?;
 
-    let color_attrs = VertexAttribute::new(
-        "color",
-        vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
-        3,
-        false,
-    );
+    ctx.use_program(program)?;
+    ctx.bind_vertex_object(triangle)?;
 
-    let triangle = ModelBuilder::new(program, Usage::Static, Primitive::Triangles, position_attrs)
-        .and_then(|b| b.color_attributes(color_attrs))
-        .and_then(|b| b.build())
-        .map(Rc::new)?;
-
-    gl_ctx.bind_model(triangle.clone());
-
-    gl_ctx.run_event_loop(|ctx, event| {
+    window.run_event_loop(|win, event| {
         match event {
             None => (),
             Some(win_event) => match win_event {
                 WindowEvent::Key(key, _, _, modifier) => match (modifier, key) {
-                    (Modifiers::Super, Key::W) | (_, Key::Escape) => ctx.set_should_close(true),
+                    (Modifiers::Super, Key::W) | (_, Key::Escape) => win.set_should_close(true),
                     _ => (),
                 },
                 WindowEvent::FramebufferSize(width, height) => ctx.viewport(0, 0, width, height),
@@ -66,7 +53,7 @@ fn main() -> Result<()> {
         }
         ctx.clear_color(0.2, 0.2, 0.2, 0.0);
         ctx.try_render()?;
-        ctx.draw();
+        win.draw();
 
         Ok(())
     })

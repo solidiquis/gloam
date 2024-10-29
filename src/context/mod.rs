@@ -1,92 +1,154 @@
-use crate::model::Model;
-use crate::texture::{Texture, TextureUnit};
-use crate::{Error, Result};
-use gl::types::{GLenum, GLfloat, GLint, GLsizei};
-use glfw::{
-    Context, Glfw, GlfwReceiver, OpenGlProfileHint, PWindow, WindowEvent, WindowHint, WindowMode,
+use crate::{
+    error::{gl_check_err, Error, Result},
+    internal_utils::try_into,
+    object::{GLObjectDescriptor, GLObjectRegistry},
+    texture::TextureUnit,
 };
-use std::collections::{HashMap, HashSet};
+use gl::types::{GLfloat, GLint, GLsizei};
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct GLContext {
-    glfw: Glfw,
-    window: PWindow,
-    events_rx: GlfwReceiver<(f64, WindowEvent)>,
-    pub(crate) bound_model: Option<Rc<Model>>,
-    pub(crate) active_textures: HashMap<Rc<Texture>, TextureUnit>,
-}
-
-pub struct GLContextConfig<'a> {
-    pub major_version: u32,
-    pub minor_version: u32,
-    pub initial_width: u32,
-    pub initial_height: u32,
-    pub title: &'a str,
-    pub window_mode: WindowMode<'a>,
-}
-
-impl Default for GLContextConfig<'_> {
-    fn default() -> Self {
-        Self {
-            major_version: 3,
-            minor_version: 3,
-            initial_width: 800,
-            initial_height: 600,
-            title: "",
-            window_mode: WindowMode::Windowed,
-        }
-    }
+    object_registry: GLObjectRegistry,
+    active_textures: Vec<Option<GLObjectDescriptor>>,
+    bound_vertex_object: Option<GLObjectDescriptor>,
+    active_program: Option<GLObjectDescriptor>,
 }
 
 impl GLContext {
-    pub fn new(config: GLContextConfig) -> Result<Self> {
-        let GLContextConfig {
-            major_version,
-            minor_version,
-            initial_height,
-            initial_width,
-            title,
-            window_mode,
-        } = config;
-
-        let mut glfw_obj = glfw::init_no_callbacks().map_err(Error::boxed)?;
-        glfw_obj.window_hint(WindowHint::OpenGlProfile(OpenGlProfileHint::Core));
-        glfw_obj.window_hint(WindowHint::ContextVersion(major_version, minor_version));
-
-        #[cfg(target_os = "macos")]
-        glfw_obj.window_hint(WindowHint::OpenGlForwardCompat(true));
-
-        let (mut window, events_rx) = glfw_obj
-            .create_window(initial_width, initial_height, title, window_mode)
-            .ok_or(Error::Misc("failed to initialize window".to_string()))?;
-
-        gl::load_with(|sym| window.get_proc_address(sym));
-        glfw_obj.make_context_current(Some(&window));
-
+    pub fn new(object_registry: GLObjectRegistry) -> Result<Self> {
         Ok(Self {
-            window,
-            events_rx,
-            glfw: glfw_obj,
-            bound_model: None,
-            active_textures: HashMap::new(),
+            active_textures: Self::init_texture_units()?,
+            object_registry,
+            bound_vertex_object: None,
+            active_program: None,
         })
     }
 
-    pub fn bind_model(&mut self, model: Rc<Model>) {
-        // model is already bound
-        if self.bound_model.as_ref().is_some_and(|m| *m == model) {
-            return;
+    pub fn bind_vertex_object(&mut self, obj_desc: GLObjectDescriptor) -> Result<()> {
+        // vertex object already bound
+        if self
+            .bound_vertex_object
+            .as_ref()
+            .is_some_and(|vo| *vo == obj_desc)
+        {
+            return Ok(());
         }
-        model.bind_and_use_program();
-        self.bound_model = Some(model);
+        let obj = self.get_vertex_object(obj_desc)?;
+        obj.bind();
+        self.bound_vertex_object = Some(obj_desc);
+        Ok(())
     }
 
-    pub fn unbind_model(&mut self) {
-        if let Some(model) = self.bound_model.take() {
-            model.unbind_and_detach_program();
+    pub fn unbind_vertex_object(&mut self) -> Option<GLObjectDescriptor> {
+        let obj_desc = self.bound_vertex_object.take()?;
+        let vo = self.get_vertex_object(obj_desc).ok()?;
+        vo.unbind();
+        Some(obj_desc)
+    }
+
+    pub fn use_program(&mut self, obj_desc: GLObjectDescriptor) -> Result<()> {
+        // program already in use
+        if self.active_program.is_some_and(|p| p == obj_desc) {
+            return Ok(());
         }
+        let program = self.get_program(obj_desc)?;
+        program.use_program();
+        self.active_program = Some(obj_desc);
+        Ok(())
+    }
+
+    pub fn detach_program(&mut self) -> Option<GLObjectDescriptor> {
+        let obj_desc = self.active_program.take()?;
+        let program = self.get_program(obj_desc).ok()?;
+        program.detach();
+        Some(obj_desc)
+    }
+
+    pub fn set_uniform_1i<T: Into<GLint>>(&self, uniform: &str, val: T) -> Result<()> {
+        let Some(obj_desc) = self.active_program else {
+            return Err(Error::NoActiveProgram);
+        };
+        self.get_program(obj_desc)
+            .and_then(|p| p.set_uniform_i(uniform, val.into()))
+    }
+
+    pub fn activate_texture(
+        &mut self,
+        obj_desc: GLObjectDescriptor,
+        generate_mipmap: bool,
+    ) -> Result<GLint> {
+        // texture already active
+        if let Some((idx, _)) = self
+            .active_textures
+            .iter()
+            .enumerate()
+            .find(|(_, od)| od.is_some_and(|o| o == obj_desc))
+        {
+            return TextureUnit::try_from(idx).map(GLint::from);
+        }
+
+        let (idx, _) = self
+            .active_textures
+            .iter()
+            .enumerate()
+            .find(|(_, od)| od.is_none())
+            .ok_or(Error::MaxActiveTextures)?;
+
+        let slot = &mut self.active_textures[idx];
+        *slot = Some(obj_desc);
+
+        let texture = self.get_texture(obj_desc)?;
+        let texture_unit = TextureUnit::try_from(idx)?;
+
+        unsafe {
+            gl::ActiveTexture(texture_unit.into());
+        }
+        texture.bind();
+
+        if generate_mipmap {
+            texture.generate_mipmap();
+        }
+        Ok(GLint::from(texture_unit))
+    }
+
+    pub fn deactivate_texture(
+        &mut self,
+        obj_desc: GLObjectDescriptor,
+    ) -> Option<GLObjectDescriptor> {
+        let (idx, od) = self
+            .active_textures
+            .iter_mut()
+            .enumerate()
+            .find(|(_, od)| od.is_some_and(|o| o == obj_desc))?;
+
+        let obj_desc = od.take().unwrap();
+        let texture = self.get_texture(obj_desc).ok()?;
+        let texture_unit = TextureUnit::try_from(idx).ok()?;
+
+        unsafe {
+            gl::ActiveTexture(texture_unit.into());
+        }
+        texture.unbind();
+        Some(obj_desc)
+    }
+
+    fn init_texture_units() -> Result<Vec<Option<GLObjectDescriptor>>> {
+        let mut max_active_textures = 0;
+        unsafe { gl::GetIntegerv(gl::MAX_TEXTURE_IMAGE_UNITS, &mut max_active_textures) };
+        gl_check_err()?;
+        let maximum: usize = try_into!(max_active_textures);
+        Ok(vec![None; maximum])
+    }
+
+    pub fn try_render(&self) -> Result<()> {
+        if self.active_program.is_none() {
+            return Err(Error::NoActiveProgram);
+        }
+        let obj_desc = self.bound_vertex_object.ok_or(Error::NoBoundModel)?;
+        let vertex_object = self.get_vertex_object(obj_desc)?;
+        vertex_object.render();
+        Ok(())
     }
 
     pub fn viewport(&self, x: GLint, y: GLint, width: GLsizei, height: GLsizei) {
@@ -99,92 +161,18 @@ impl GLContext {
             gl::Clear(gl::COLOR_BUFFER_BIT);
         }
     }
-
-    pub fn set_uniform_1i<T: Into<GLint>>(&self, uniform: &str, val: T) -> Result<()> {
-        let Some(model) = self.bound_model.as_ref() else {
-            return Err(Error::NoBoundModel);
-        };
-        model.program().set_uniform_i(uniform, val.into())
-    }
-
-    pub fn activate_texture(
-        &mut self,
-        texture: Rc<Texture>,
-        generate_mipmap: bool,
-    ) -> Result<TextureUnit> {
-        if let Some(unit) = self.active_textures.get(&texture).cloned() {
-            return Ok(unit);
-        }
-
-        let unit = if self.active_textures.is_empty() {
-            Some(TextureUnit::Texture0)
-        } else {
-            let active_units = self
-                .active_textures
-                .values()
-                .collect::<HashSet<&TextureUnit>>();
-            TextureUnit::iter().find(|u| !active_units.contains(u))
-        };
-
-        let Some(unused_unit) = unit else {
-            return Err(Error::MaxActiveTextures);
-        };
-
-        unsafe { gl::ActiveTexture(GLenum::from(unused_unit)) }
-        texture.bind();
-        if generate_mipmap {
-            texture.generate_mipmap();
-        }
-        self.active_textures.insert(texture, unused_unit);
-
-        Ok(unused_unit)
-    }
-
-    pub fn deactivate_texture(&mut self, texture: Rc<Texture>) {
-        let Some(unit) = self.active_textures.remove(&texture) else {
-            return;
-        };
-        unsafe {
-            gl::ActiveTexture(GLenum::from(unit));
-        }
-        texture.unbind();
-    }
-
-    pub fn try_render(&self) -> Result<()> {
-        let Some(model) = self.bound_model.as_ref() else {
-            return Err(Error::NoBoundModel);
-        };
-        model.render();
-        Ok(())
-    }
-
-    pub fn draw(&mut self) {
-        self.swap_buffers();
-    }
-
-    pub fn run_event_loop<F>(&mut self, mut op: F) -> Result<()>
-    where
-        F: FnMut(&mut Self, Option<WindowEvent>) -> Result<()>,
-    {
-        while !self.should_close() {
-            let event = self.events_rx.receive().map(|(_, ev)| ev);
-            op(self, event)?;
-            self.glfw.poll_events();
-        }
-        Ok(())
-    }
 }
 
 impl Deref for GLContext {
-    type Target = PWindow;
+    type Target = GLObjectRegistry;
 
     fn deref(&self) -> &Self::Target {
-        &self.window
+        &self.object_registry
     }
 }
 
 impl DerefMut for GLContext {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.window
+        &mut self.object_registry
     }
 }

@@ -1,5 +1,9 @@
 use super::Shader;
-use crate::{Error, Result};
+use crate::{
+    context::GLContext,
+    error::{Error, Result},
+    object::{GLObject, GLObjectDescriptor},
+};
 use gl::types::GLint;
 use std::{ffi::CString, mem, ops::Drop, ptr};
 
@@ -23,6 +27,12 @@ impl Program {
     pub(crate) fn use_program(&self) {
         unsafe {
             gl::UseProgram(self.gl_object_id);
+        }
+    }
+
+    pub(crate) fn detach(&self) {
+        unsafe {
+            gl::UseProgram(0);
         }
     }
 
@@ -69,7 +79,7 @@ impl Linker {
         self
     }
 
-    pub fn link(self) -> Result<Program> {
+    pub fn link(self, ctx: &mut GLContext) -> Result<GLObjectDescriptor> {
         unsafe {
             for Shader(shader) in &self.shaders {
                 gl::AttachShader(self.program, *shader);
@@ -96,10 +106,11 @@ impl Linker {
             for Shader(shader) in self.shaders {
                 gl::DeleteShader(shader);
             }
-
-            Ok(Program {
+            let program = Program {
                 gl_object_id: self.program,
-            })
+            };
+            let obj_dec = ctx.register_object(GLObject::Program(program));
+            Ok(obj_dec)
         }
     }
 }

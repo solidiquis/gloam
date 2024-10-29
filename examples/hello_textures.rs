@@ -1,12 +1,12 @@
 use glfw::{Key, Modifiers, WindowEvent};
 use gloam::{
-    context::{GLContext, GLContextConfig},
-    model::{primitives::Primitive, usage::Usage, ModelBuilder, VertexAttribute},
+    app,
     shader::{program::Linker, Shader, ShaderType},
     texture::{TextureBuilder, TextureFilterParam, TextureWrapParam},
+    vertex::{Primitive, Usage, VOBInit, VertexObjectBuilder},
     Result,
 };
-use std::{path::PathBuf, rc::Rc};
+use std::path::PathBuf;
 
 const POSITION_ATTR: [f32; 12] = [
     0.5, 0.5, 0.0, // top right
@@ -35,12 +35,9 @@ const INDICES: [u32; 6] = [
 ];
 
 fn main() -> Result<()> {
-    let mut gl_context = GLContext::new(GLContextConfig {
-        title: "HelloTextures",
-        ..Default::default()
-    })?;
-    gl_context.set_key_polling(true);
-    gl_context.set_framebuffer_size_polling(true);
+    let (mut window, mut ctx) = app::init_default_opengl_3_3("HelloTextures")?;
+    window.set_key_polling(true);
+    window.set_framebuffer_size_polling(true);
 
     let vertex_shader_src = PathBuf::new()
         .join("examples")
@@ -55,7 +52,7 @@ fn main() -> Result<()> {
     let program = Linker::new()
         .attach_shader(vertex_shader)
         .attach_shader(fragment_shader)
-        .link()?;
+        .link(&mut ctx)?;
 
     let texture_wood_src = PathBuf::new().join("examples").join("hello_textures.jpg");
     let texture_wood = TextureBuilder::new_2d_rgba8(texture_wood_src)?
@@ -63,8 +60,7 @@ fn main() -> Result<()> {
         .t_wrap(TextureWrapParam::Repeat)
         .min_filter(TextureFilterParam::LinearMipmapLinear)
         .mag_filter(TextureFilterParam::Linear)
-        .build()
-        .map(Rc::new)?;
+        .build(&mut ctx)?;
 
     let texture_wood_smiley = PathBuf::new()
         .join("examples")
@@ -74,33 +70,29 @@ fn main() -> Result<()> {
         .t_wrap(TextureWrapParam::Repeat)
         .min_filter(TextureFilterParam::LinearMipmapLinear)
         .mag_filter(TextureFilterParam::Linear)
-        .build()
-        .map(Rc::new)?;
+        .build(&mut ctx)?;
 
-    let position_attr = VertexAttribute::new("apos", POSITION_ATTR.to_vec(), 3, false);
-    let color_attr = VertexAttribute::new("acol", COLOR_ATTR.to_vec(), 3, false);
-    let texture_attr = VertexAttribute::new("atex", TEXTURE_ATTR.to_vec(), 2, false);
+    let surface = VertexObjectBuilder::<VOBInit>::new(Primitive::Triangles, Usage::Static)
+        .attribute("apos", 3, &POSITION_ATTR)?
+        .attribute("acol", 3, &COLOR_ATTR)?
+        .attribute("atex", 2, &TEXTURE_ATTR)?
+        .indexes(&INDICES)?
+        .build(&mut ctx, program)?;
 
-    let surface = ModelBuilder::new(program, Usage::Static, Primitive::Triangles, position_attr)
-        .and_then(|b| b.color_attributes(color_attr))
-        .and_then(|b| b.texture_attributes(texture_attr))
-        .and_then(|b| b.indices(INDICES.to_vec()))
-        .and_then(|b| b.build())
-        .map(Rc::new)?;
+    ctx.use_program(program)?;
+    ctx.bind_vertex_object(surface)?;
+    let texture_unit_wood = ctx.activate_texture(texture_wood, true)?;
+    let texture_unit_smiley = ctx.activate_texture(texture_smiley, true)?;
 
-    gl_context.bind_model(surface.clone());
-    let texture_unit_wood = gl_context.activate_texture(texture_wood.clone(), true)?;
-    let texture_unit_smiley = gl_context.activate_texture(texture_smiley.clone(), true)?;
+    ctx.set_uniform_1i("texture1", texture_unit_wood)?;
+    ctx.set_uniform_1i("texture2", texture_unit_smiley)?;
 
-    gl_context.set_uniform_1i("texture1", texture_unit_wood)?;
-    gl_context.set_uniform_1i("texture2", texture_unit_smiley)?;
-
-    gl_context.run_event_loop(|ctx, event| {
+    window.run_event_loop(|win, event| {
         match event {
             None => (),
             Some(win_event) => match win_event {
                 WindowEvent::Key(key, _, _, modifier) => match (modifier, key) {
-                    (Modifiers::Super, Key::W) | (_, Key::Escape) => ctx.set_should_close(true),
+                    (Modifiers::Super, Key::W) | (_, Key::Escape) => win.set_should_close(true),
                     _ => (),
                 },
                 WindowEvent::FramebufferSize(width, height) => ctx.viewport(0, 0, width, height),
@@ -108,7 +100,7 @@ fn main() -> Result<()> {
             },
         }
         ctx.try_render()?;
-        ctx.draw();
+        win.draw();
 
         Ok(())
     })
