@@ -26,6 +26,7 @@ pub struct Texture {
     pub kind: TextureType,
 }
 
+#[derive(Debug)]
 pub struct TextureBuilder {
     kind: TextureType,
     data: Vec<u8>,

@@ -1,5 +1,6 @@
 use gl::types::GLenum;
 
+#[derive(Debug)]
 pub enum TextureFilterParam {
     Nearest,
     Linear,
