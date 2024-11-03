@@ -14,11 +14,17 @@ pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("no model is currently bound to the context")]
-    NoBoundModel,
+    #[error("no vertex object is currently bound")]
+    NoBoundVertexObject,
+
+    #[error("specified vertex object is not currently bound")]
+    VertexObjectNotBound,
 
     #[error("no program is currently in use")]
     NoActiveProgram,
+
+    #[error("specified program is not currently in use")]
+    ProgramNotInUse,
 
     #[error("found index {index} but only {num_vertices} vertices")]
     InvalidIndex { index: u32, num_vertices: i32 },

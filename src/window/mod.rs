@@ -71,6 +71,10 @@ impl Window {
         self.swap_buffers();
     }
 
+    pub fn get_time(&self) -> f64 {
+        self.glfw.get_time()
+    }
+
     pub fn run_event_loop<F>(mut self, mut op: F) -> Result<()>
     where
         F: FnMut(&mut Self, Option<WindowEvent>) -> Result<()>,

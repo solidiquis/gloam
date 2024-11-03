@@ -6,8 +6,8 @@ use crate::{
 };
 use std::collections::HashSet;
 
-pub(crate) mod descriptor;
-pub(crate) use descriptor::{GLObjectDescriptor, GLObjectDescriptorKind};
+pub mod descriptor;
+pub use descriptor::{GLObjectDescriptor, GLObjectDescriptorKind};
 
 #[derive(Debug)]
 pub struct GLObjectRegistry {

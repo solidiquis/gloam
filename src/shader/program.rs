@@ -4,8 +4,7 @@ use crate::{
     error::{Error, Result},
     object::{GLObject, GLObjectDescriptor},
 };
-use gl::types::GLint;
-use std::{ffi::CString, mem, ops::Drop, ptr};
+use std::{mem, ops::Drop, ptr};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Program {
@@ -20,50 +19,6 @@ pub struct Linker {
 impl Default for Linker {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Program {
-    pub(crate) fn use_program(&self) {
-        unsafe {
-            gl::UseProgram(self.gl_object_id);
-        }
-    }
-
-    pub(crate) fn detach(&self) {
-        unsafe {
-            gl::UseProgram(0);
-        }
-    }
-
-    pub(crate) fn get_attrib_loc(&self, attrib: &str) -> Result<gl::types::GLuint> {
-        let c_attrib = CString::new(attrib).map_err(Error::boxed)?;
-        unsafe {
-            let loc = gl::GetAttribLocation(self.gl_object_id, c_attrib.as_ptr());
-            if loc == -1 {
-                return Err(Error::AttributeLocNotFound(attrib.into()));
-            }
-            Ok(loc as gl::types::GLuint)
-        }
-    }
-
-    pub(crate) fn get_uniform_loc(&self, uniform: &str) -> Result<gl::types::GLint> {
-        let c_uniform = CString::new(uniform).map_err(Error::boxed)?;
-        unsafe {
-            let loc = gl::GetUniformLocation(self.gl_object_id, c_uniform.as_ptr());
-            if loc == -1 {
-                return Err(Error::UniformLocNotFound(uniform.into()));
-            }
-            Ok(loc)
-        }
-    }
-
-    pub(crate) fn set_uniform_i(&self, uniform: &str, value: GLint) -> Result<()> {
-        let loc = self.get_uniform_loc(uniform)?;
-        unsafe {
-            gl::Uniform1i(loc, value);
-        }
-        Ok(())
     }
 }
 

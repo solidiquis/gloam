@@ -1,6 +1,7 @@
 use glfw::{Key, Modifiers, WindowEvent};
 use gloam::{
     app,
+    context::ClearMask,
     shader::{program::Linker, Shader, ShaderType},
     vertex::{Primitive, Usage, VOBInit, VertexObjectBuilder},
     Result,
@@ -36,8 +37,8 @@ fn main() -> Result<()> {
         .attribute("aColor", 3, &[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])?
         .build(&mut ctx, program)?;
 
-    ctx.use_program(program)?;
-    ctx.bind_vertex_object(triangle)?;
+    ctx.try_use_program(program)?;
+    ctx.try_bind_vertex_object(triangle)?;
 
     window.run_event_loop(|win, event| {
         match event {
@@ -51,7 +52,7 @@ fn main() -> Result<()> {
                 _ => (),
             },
         }
-        ctx.clear_color(0.2, 0.2, 0.2, 0.0);
+        ctx.clear(&[ClearMask::Color(0.2, 0.2, 0.2, 0.0)]);
         ctx.try_render()?;
         win.draw();
 

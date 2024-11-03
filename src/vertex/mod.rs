@@ -6,7 +6,7 @@ use crate::{
     object::{GLObject, GLObjectDescriptor},
 };
 use gl::types::{GLenum, GLint, GLuint};
-use std::{ffi::c_void, marker::PhantomData, mem, ops::Drop, ptr};
+use std::{ffi::c_void, marker::PhantomData, mem, ops::Drop};
 
 pub mod primitives;
 pub use primitives::Primitive;
@@ -16,77 +16,40 @@ pub use usage::Usage;
 
 #[derive(Debug)]
 pub struct VertexObject {
-    vertex_array_object: GLuint,
-    vertex_buffer_object: GLuint,
-    index_buffer_object: Option<IndexObject>,
-    attributes: Vec<VertexAttribute>,
-    num_vertices: GLint,
-    primitive: Primitive,
-    usage: Usage,
+    pub(crate) vertex_array_object: GLuint,
+    pub(crate) vertex_buffer_object: GLuint,
+    pub(crate) index_buffer_object: Option<IndexObject>,
+    pub(crate) attributes: Vec<VertexAttribute>,
+    pub(crate) num_vertices: GLint,
+    pub(crate) primitive: Primitive,
+    pub(crate) usage: Usage,
 }
 
 #[derive(Debug)]
 pub struct VertexAttribute {
-    name: String,
-    component_size: GLint,
-    data: Vec<f32>,
-    normalized: bool,
+    pub(crate) name: String,
+    pub(crate) component_size: GLint,
+    pub(crate) data: Vec<f32>,
+    pub(crate) normalized: bool,
 }
 
 #[derive(Debug)]
-struct IndexObject {
-    gl_object_id: GLuint,
-    indexes: Vec<u32>,
+pub struct IndexObject {
+    pub(crate) gl_object_id: GLuint,
+    pub(crate) indexes: Vec<u32>,
 }
 
 pub struct VertexObjectBuilder<T> {
-    num_vertices: GLint,
-    attributes: Vec<VertexAttribute>,
-    indexes: Option<Vec<u32>>,
-    usage: Usage,
-    primitive: Primitive,
-    state: PhantomData<T>,
+    pub(crate) num_vertices: GLint,
+    pub(crate) attributes: Vec<VertexAttribute>,
+    pub(crate) indexes: Option<Vec<u32>>,
+    pub(crate) usage: Usage,
+    pub(crate) primitive: Primitive,
+    pub(crate) state: PhantomData<T>,
 }
 
 pub struct VOBInit;
 pub struct VOBAttr;
-
-impl VertexObject {
-    pub(crate) fn render(&self) {
-        unsafe {
-            let primitive = GLenum::from(self.primitive);
-
-            if let Some(ibo) = self.index_buffer_object.as_ref() {
-                gl::DrawElements(
-                    primitive,
-                    try_into!(ibo.indexes.len()),
-                    gl::UNSIGNED_INT,
-                    ptr::null(),
-                )
-            } else {
-                gl::DrawArrays(primitive, 0, try_into!(self.num_vertices));
-            }
-        }
-    }
-
-    pub(crate) fn bind(&self) {
-        unsafe {
-            gl::BindVertexArray(self.vertex_array_object);
-            if let Some(ibo) = self.index_buffer_object.as_ref() {
-                gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ibo.gl_object_id);
-            }
-        }
-    }
-
-    pub(crate) fn unbind(&self) {
-        unsafe {
-            gl::BindVertexArray(0);
-            if self.index_buffer_object.is_some() {
-                gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, 0);
-            }
-        }
-    }
-}
 
 impl<T> VertexObjectBuilder<T> {
     pub fn new(primitive: Primitive, usage: Usage) -> VertexObjectBuilder<VOBInit> {
@@ -237,11 +200,12 @@ impl VertexObjectBuilder<VOBAttr> {
         gl::GenVertexArrays(1, &mut vao);
         gl::BindVertexArray(vao);
 
-        let program = ctx.get_program(program)?;
         let mut byte_offset = 0;
 
+        ctx.try_use_program(program)?;
+
         for attribute in &attributes {
-            let attr_loc = program.get_attrib_loc(&attribute.name)?;
+            let attr_loc = ctx.try_get_attrib_loc(program, &attribute.name)?;
             gl::VertexAttribPointer(
                 attr_loc,
                 attribute.component_size,
@@ -271,6 +235,7 @@ impl VertexObjectBuilder<VOBAttr> {
             }
         });
 
+        ctx.detach_current_program();
         gl::BindBuffer(gl::ARRAY_BUFFER, 0);
         gl::BindVertexArray(0);
 

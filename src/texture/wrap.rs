@@ -1,6 +1,6 @@
 use gl::types::GLenum;
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum TextureWrapParam {
     Repeat,
     ClampToEdge,
