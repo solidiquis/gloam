@@ -24,7 +24,7 @@ fn main() {
         glm::vec3(-1.3, 1.0, -1.5),
     ];
 
-    let (mut window, mut ctx) = app::init_default_opengl_3_3("HelloTextures").unwrap();
+    let (mut window, mut ctx) = app::init_default_opengl_3_3("Hello3D").unwrap();
     window.set_key_polling(true);
     window.set_framebuffer_size_polling(true);
 
