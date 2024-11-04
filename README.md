@@ -17,7 +17,7 @@ A work-in-progress OpenGL library for Rust built on top of [gl](https://docs.rs/
 
 ## Demo
 
-**FYI**: GIF quality is pretty bad and doesn't reflect things actually look.
+**FYI**: GIF quality is pretty bad and doesn't reflect how things actually look.
 
 ### [Hello Triangle](./examples/hello_triangle/main.rs)
 ![missing image](./demos/hello_triangle.png)
