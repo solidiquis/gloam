@@ -78,9 +78,9 @@ impl VertexObjectBuilder<VOBInit> {
         }
         let num_values: GLint = try_into!(data.len());
         if num_values % component_size != 0 {
-            return Err(Error::InvalidVertexObject(
-                format!("length of data ({num_values}) must be evenly divisible by component size ({component_size})"),
-            ));
+            return Err(Error::InvalidVertexObject(format!(
+                "length of data ({num_values}) must be evenly divisible by component size ({component_size})"
+            )));
         }
         let num_vertices = num_values / component_size;
 
@@ -113,9 +113,9 @@ impl VertexObjectBuilder<VOBAttr> {
         let new_attr_num_vertices = num_values / component_size;
 
         if self.num_vertices != new_attr_num_vertices {
-            return Err(Error::InvalidVertexObject(
-                format!("number of vertices for attribute '{name}' doesn't match number of vertices for previous attributes"),
-            ));
+            return Err(Error::InvalidVertexObject(format!(
+                "number of vertices for attribute '{name}' doesn't match number of vertices for previous attributes"
+            )));
         }
         self.attributes.push(VertexAttribute {
             component_size,

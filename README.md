@@ -17,11 +17,16 @@ A work-in-progress OpenGL library for Rust built on top of [gl](https://docs.rs/
 
 ## Demo
 
-### [Hello Triangle](./examples/hello_triangle.rs)
+**FYI**: GIF quality is pretty bad and doesn't reflect how things actually look.
+
+### [Hello Triangle](./examples/hello_triangle/main.rs)
 ![missing image](./demos/hello_triangle.png)
 
-### [Hello Textures](./examples/hello_textures.rs)
+### [Hello Textures](./examples/hello_textures/main.rs)
 ![missing image](./demos/hello_textures.png)
 
-### [Hello 3D](./examples/hello_3d.rs)
+### [Hello 3D](./examples/hello_3d/main.rs)
 ![missing GIF](./demos/hello_3d.gif)
+
+### [Hello Camera](./examples/hello_camera/main.rs)
+![missing GIF](./demos/hello_camera.gif)
