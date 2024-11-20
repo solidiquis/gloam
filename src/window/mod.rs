@@ -75,6 +75,11 @@ impl Window {
         self.glfw.get_time()
     }
 
+    pub fn get_aspect_ratio(&self) -> f32 {
+        let (width, height) = self.get_size();
+        width as f32 / height as f32
+    }
+
     pub fn run_event_loop<F>(mut self, mut op: F) -> Result<()>
     where
         F: FnMut(&mut Self, Option<WindowEvent>) -> Result<()>,

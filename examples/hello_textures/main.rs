@@ -34,6 +34,7 @@ const INDICES: [u32; 6] = [
 ];
 
 fn main() {
+    env_logger::init();
     let (mut window, mut ctx) = app::init_default_opengl_3_3("HelloTextures").unwrap();
     window.set_key_polling(true);
     window.set_framebuffer_size_polling(true);
@@ -93,9 +94,9 @@ fn main() {
     let texture_unit_wood = ctx.activate_texture(texture_wood, true).unwrap();
     let texture_unit_smiley = ctx.activate_texture(texture_smiley, true).unwrap();
 
-    ctx.try_set_uniform_1i(program, "texture1", texture_unit_wood)
+    ctx.try_set_uniform_1i("texture1", texture_unit_wood)
         .unwrap();
-    ctx.try_set_uniform_1i(program, "texture2", texture_unit_smiley)
+    ctx.try_set_uniform_1i("texture2", texture_unit_smiley)
         .unwrap();
 
     let _ = window.run_event_loop(|win, event| {

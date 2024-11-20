@@ -4,14 +4,17 @@ use std::{
     convert::AsRef,
     ffi::{CString, OsStr},
     fs, mem,
-    path::Path,
+    path::{Path, PathBuf},
     ptr,
 };
 
 pub mod program;
 pub use program::Program;
 
-pub struct Shader(gl::types::GLuint);
+pub struct Shader {
+    pub gl_object_id: gl::types::GLuint,
+    pub src: PathBuf,
+}
 
 pub enum ShaderType {
     Vertex,
@@ -37,8 +40,11 @@ impl Shader {
             .ok_or(Error::Misc(
                 "expected shader to have a file name".to_string(),
             ))?;
-        let shader = Self::compile_src(&file_name, &shader_src, typ)?;
-        Ok(Self(shader))
+        let gl_object_id = Self::compile_src(&file_name, &shader_src, typ)?;
+        Ok(Self {
+            gl_object_id,
+            src: shader_path.to_path_buf(),
+        })
     }
 
     fn compile_src(file_name: &str, src: &str, typ: ShaderType) -> Result<gl::types::GLuint> {

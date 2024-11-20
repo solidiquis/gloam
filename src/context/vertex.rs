@@ -9,9 +9,7 @@ use std::ptr;
 
 impl GLContext {
     pub fn try_render(&self) -> Result<()> {
-        if self.active_program.is_none() {
-            return Err(Error::NoActiveProgram);
-        }
+        self.ensure_program_active()?;
         let obj_desc = self.bound_vertex_object.ok_or(Error::NoBoundVertexObject)?;
         let vo = self.get_vertex_object(obj_desc)?;
 
@@ -34,12 +32,7 @@ impl GLContext {
     }
 
     pub fn try_bind_vertex_object(&mut self, vo_desc: GLObjectDescriptor) -> Result<()> {
-        // vertex object already bound
-        if self
-            .bound_vertex_object
-            .as_ref()
-            .is_some_and(|vo| *vo == vo_desc)
-        {
+        if self.bound_vertex_object.is_some_and(|vo| vo == vo_desc) {
             return Ok(());
         }
         let vo = self.get_vertex_object(vo_desc)?;
@@ -49,6 +42,7 @@ impl GLContext {
                 gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ibo.gl_object_id);
             }
         }
+        log::debug!("currently bound vertex object: object_storage_id={vo_desc:?} -> {vo:?}");
         self.bound_vertex_object = Some(vo_desc);
         Ok(())
     }
@@ -62,6 +56,7 @@ impl GLContext {
                 gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, 0);
             }
         }
+        log::debug!("vertex object unbound: object_storage_id={obj_desc:?}");
         Some(obj_desc)
     }
 
