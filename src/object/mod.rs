@@ -4,7 +4,7 @@ use crate::{
     texture::Texture,
     vertex::VertexObject,
 };
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Debug};
 
 pub mod descriptor;
 pub use descriptor::{GLObjectDescriptor, GLObjectDescriptorKind};
@@ -17,7 +17,6 @@ pub struct GLObjectRegistry {
     invalidated_ids: HashSet<usize>,
 }
 
-#[derive(Debug)]
 pub enum GLObject {
     VertexObject(VertexObject),
     Program(Program),
@@ -41,30 +40,37 @@ impl GLObjectRegistry {
     }
 
     pub fn register_object(&mut self, obj: GLObject) -> GLObjectDescriptor {
-        if self.objects.len() < self.objects.capacity() {
-            let obj_desc = self.make_descriptor(&obj, self.objects.len());
-            self.objects.push(Some(obj));
-            return obj_desc;
-        }
-        match self
-            .objects
-            .iter()
-            .enumerate()
-            .find(|(_, obj)| obj.is_none())
-        {
-            Some((idx, _)) => {
-                let obj_desc = self.make_descriptor(&obj, idx);
-                let slot = &mut self.objects[idx];
-                *slot = Some(obj);
-                obj_desc
-            }
-            None => {
+        let desc = {
+            if self.objects.len() < self.objects.capacity() {
                 let obj_desc = self.make_descriptor(&obj, self.objects.len());
-                self.objects.reserve(self.capacity_increment);
                 self.objects.push(Some(obj));
                 obj_desc
+            } else {
+                match self
+                    .objects
+                    .iter()
+                    .enumerate()
+                    .find(|(_, obj)| obj.is_none())
+                {
+                    Some((idx, _)) => {
+                        let obj_desc = self.make_descriptor(&obj, idx);
+                        let slot = &mut self.objects[idx];
+                        *slot = Some(obj);
+                        obj_desc
+                    }
+                    None => {
+                        let obj_desc = self.make_descriptor(&obj, self.objects.len());
+                        self.objects.reserve(self.capacity_increment);
+                        self.objects.push(Some(obj));
+                        obj_desc
+                    }
+                }
             }
-        }
+        };
+        let _ = self.get_object(desc).map(|ob| {
+            log::debug!("registered new object: object_storage_id={desc:?} -> {ob:?}");
+        });
+        desc
     }
 
     pub fn remove_object(&mut self, obj_desc: GLObjectDescriptor) -> Option<GLObject> {
@@ -131,5 +137,15 @@ impl GLObjectRegistry {
 
     fn descriptor_is_valid(&self, obj_desc: GLObjectDescriptor) -> bool {
         !self.invalidated_ids.contains(&obj_desc.internal_id)
+    }
+}
+
+impl Debug for GLObject {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::VertexObject(o) => <VertexObject as Debug>::fmt(o, f),
+            Self::Texture(o) => <Texture as Debug>::fmt(o, f),
+            Self::Program(o) => <Program as Debug>::fmt(o, f),
+        }
     }
 }

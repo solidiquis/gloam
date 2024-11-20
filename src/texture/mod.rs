@@ -6,7 +6,12 @@ use crate::{
 };
 use gl::types::{GLenum, GLuint};
 use image::{DynamicImage, GenericImageView};
-use std::{ffi::c_void, ops::Drop, path::Path};
+use std::{
+    ffi::c_void,
+    fmt::Debug,
+    ops::Drop,
+    path::{Path, PathBuf},
+};
 
 pub mod filter;
 pub use filter::TextureFilterParam;
@@ -20,15 +25,17 @@ pub use wrap::TextureWrapParam;
 pub mod units;
 pub use units::TextureUnit;
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Eq, PartialEq, Hash)]
 pub struct Texture {
     pub gl_object_id: GLuint,
     pub kind: TextureType,
+    pub src: PathBuf,
 }
 
 #[derive(Debug)]
 pub struct TextureBuilder {
     kind: TextureType,
+    src: PathBuf,
     data: Vec<u8>,
     width: u32,
     height: u32,
@@ -62,7 +69,8 @@ impl Texture {
 
 impl TextureBuilder {
     pub fn new_2d_rgba8<Q: AsRef<Path>>(path: Q) -> Result<Self> {
-        let buffer = image::open(path.as_ref())
+        let texture_path = path.as_ref();
+        let buffer = image::open(texture_path)
             .map(|img| DynamicImage::ImageRgba8(img.to_rgba8()).flipv())
             .map_err(|e| misc_error!("failed to load texture file: {e}"))?;
 
@@ -83,6 +91,7 @@ impl TextureBuilder {
             min_filter: None,
             mag_filter: None,
             format: gl::RGBA,
+            src: texture_path.to_path_buf(),
         })
     }
 
@@ -118,6 +127,7 @@ impl TextureBuilder {
     unsafe fn build_impl(self, ctx: &mut GLContext) -> Result<GLObjectDescriptor> {
         let TextureBuilder {
             data,
+            src,
             width,
             height,
             kind,
@@ -189,6 +199,7 @@ impl TextureBuilder {
         gl::BindTexture(target, 0);
         let texture = Texture {
             kind,
+            src,
             gl_object_id: texture,
         };
         let obj_desc = ctx.register_object(GLObject::Texture(texture));
@@ -202,5 +213,17 @@ impl Drop for Texture {
             gl::DeleteTextures(1, &self.gl_object_id);
         }
         self.gl_object_id = 0;
+    }
+}
+
+impl Debug for Texture {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Texture {{ gl_object_id={}, texture_type={:?}, src='{}' }}",
+            self.gl_object_id,
+            self.kind,
+            self.src.display(),
+        )
     }
 }

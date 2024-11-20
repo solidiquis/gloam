@@ -111,10 +111,8 @@ fn main() {
     let texture_unit_metal = ctx.activate_texture(texture_metal, true).unwrap();
     let texture_unit_sift = ctx.activate_texture(texture_sift, true).unwrap();
 
-    ctx.try_set_uniform_1i(program, "metal", texture_unit_metal)
-        .unwrap();
-    ctx.try_set_uniform_1i(program, "sift", texture_unit_sift)
-        .unwrap();
+    ctx.try_set_uniform_1i("metal", texture_unit_metal).unwrap();
+    ctx.try_set_uniform_1i("sift", texture_unit_sift).unwrap();
 
     let mut camera = Camera::new(
         glm::vec3(0.0, 0.0, 5.0),
@@ -123,22 +121,12 @@ fn main() {
         10.0,
         0.2,
     );
-    ctx.try_set_uniform_matrix_4fv(
-        program,
-        "view",
-        glm::value_ptr(&camera.get_view_matrix()),
-        false,
-    )
-    .unwrap();
+    ctx.try_set_uniform_matrix_4fv("view", glm::value_ptr(&camera.get_view_matrix()), false)
+        .unwrap();
 
     let projection_matrix = glm::perspective(PI / 4.0, aspect_ratio, 0.1, 100.0);
-    ctx.try_set_uniform_matrix_4fv(
-        program,
-        "projection",
-        glm::value_ptr(&projection_matrix),
-        false,
-    )
-    .unwrap();
+    ctx.try_set_uniform_matrix_4fv("projection", glm::value_ptr(&projection_matrix), false)
+        .unwrap();
 
     let identity_matrix = glm::identity::<f32, 4>();
     let mut time_last_draw = window.get_time() as f32;
@@ -169,7 +157,6 @@ fn main() {
                                 camera.move_forward(dtime);
                             }
                             ctx.try_set_uniform_matrix_4fv(
-                                program,
                                 "view",
                                 glm::value_ptr(&camera.get_view_matrix()),
                                 false,
@@ -187,7 +174,6 @@ fn main() {
                                 camera.move_backward(dtime);
                             }
                             ctx.try_set_uniform_matrix_4fv(
-                                program,
                                 "view",
                                 glm::value_ptr(&camera.get_view_matrix()),
                                 false,
@@ -205,7 +191,6 @@ fn main() {
                                 camera.move_right(dtime);
                             }
                             ctx.try_set_uniform_matrix_4fv(
-                                program,
                                 "view",
                                 glm::value_ptr(&camera.get_view_matrix()),
                                 false,
@@ -223,7 +208,6 @@ fn main() {
                                 camera.move_left(dtime);
                             }
                             ctx.try_set_uniform_matrix_4fv(
-                                program,
                                 "view",
                                 glm::value_ptr(&camera.get_view_matrix()),
                                 false,
@@ -258,7 +242,6 @@ fn main() {
                     cursor_y = new_cursor_y;
                     camera.rotate_to_direction(direction, dtime);
                     ctx.try_set_uniform_matrix_4fv(
-                        program,
                         "view",
                         glm::value_ptr(&camera.get_view_matrix()),
                         false,
@@ -277,7 +260,7 @@ fn main() {
             let mut model_matrix = glm::translate(&identity_matrix, position);
             model_matrix =
                 glm::rotate(&model_matrix, PI * angle / 180.0, &glm::vec3(1.0, 0.3, 0.5));
-            ctx.try_set_uniform_matrix_4fv(program, "model", glm::value_ptr(&model_matrix), false)
+            ctx.try_set_uniform_matrix_4fv("model", glm::value_ptr(&model_matrix), false)
                 .unwrap();
             ctx.try_render().unwrap();
         }

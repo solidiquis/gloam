@@ -23,9 +23,6 @@ pub enum Error {
     #[error("no program is currently in use")]
     NoActiveProgram,
 
-    #[error("specified program is not currently in use")]
-    ProgramNotInUse,
-
     #[error("found index {index} but only {num_vertices} vertices")]
     InvalidIndex { index: u32, num_vertices: i32 },
 

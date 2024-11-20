@@ -30,3 +30,6 @@ A work-in-progress OpenGL library for Rust built on top of [gl](https://docs.rs/
 
 ### [Hello Camera](./examples/hello_camera/main.rs)
 ![missing GIF](./demos/hello_camera.gif)
+
+### [Hello Camera](./examples/hello_lighting/main.rs)
+![missing GIF](./demos/hello_lighting.gif)

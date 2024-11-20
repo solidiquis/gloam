@@ -4,11 +4,12 @@ use crate::{
     error::{Error, Result},
     object::{GLObject, GLObjectDescriptor},
 };
-use std::{mem, ops::Drop, ptr};
+use std::{fmt::Debug, mem, ops::Drop, path::PathBuf, ptr};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct Program {
     pub gl_object_id: gl::types::GLuint,
+    shader_src_paths: Vec<PathBuf>,
 }
 
 pub struct Linker {
@@ -36,8 +37,11 @@ impl Linker {
 
     pub fn link(self, ctx: &mut GLContext) -> Result<GLObjectDescriptor> {
         unsafe {
-            for Shader(shader) in &self.shaders {
-                gl::AttachShader(self.program, *shader);
+            let mut shader_src_paths = Vec::with_capacity(self.shaders.len());
+
+            for Shader { gl_object_id, src } in &self.shaders {
+                gl::AttachShader(self.program, *gl_object_id);
+                shader_src_paths.push(src.clone());
             }
 
             gl::LinkProgram(self.program);
@@ -58,10 +62,11 @@ impl Linker {
                 return Err(Error::ProgramLink(String::from(reason.trim())));
             }
 
-            for Shader(shader) in self.shaders {
-                gl::DeleteShader(shader);
+            for Shader { gl_object_id, .. } in self.shaders {
+                gl::DeleteShader(gl_object_id);
             }
             let program = Program {
+                shader_src_paths,
                 gl_object_id: self.program,
             };
             let obj_dec = ctx.register_object(GLObject::Program(program));
@@ -76,5 +81,21 @@ impl Drop for Program {
             gl::DeleteProgram(self.gl_object_id);
         }
         self.gl_object_id = 0;
+    }
+}
+
+impl Debug for Program {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let shader_srcs = self
+            .shader_src_paths
+            .iter()
+            .map(|p| p.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(",");
+        write!(
+            f,
+            "Program {{ gl_object_id={}, src='{shader_srcs}' }}",
+            self.gl_object_id
+        )
     }
 }

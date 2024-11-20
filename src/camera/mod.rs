@@ -1,13 +1,13 @@
-use crate::physics::kinematics::{angular, linear};
+use crate::physics::kinematics::linear;
 use nalgebra_glm as glm;
 
 /// Free camera. TODO: Move camera code into trait and implement free camera and orbital camera.
 pub struct Camera {
-    position: glm::Vec3,
-    target: glm::Vec3,
-    up: glm::Vec3,
-    movement_angular_velocity: f32,
-    movement_linear_velocity: f32,
+    pub position: glm::Vec3,
+    pub target: glm::Vec3,
+    pub up: glm::Vec3,
+    pub movement_angular_velocity: f32,
+    pub movement_linear_velocity: f32,
 }
 
 impl Camera {
@@ -93,14 +93,16 @@ impl Camera {
     }
 
     pub fn rotate_to_direction(&mut self, direction: glm::Vec3, dtime: f32) {
-        self.target = angular::rotate_to_direction(
-            &self.position,
-            &self.up,
-            &self.target,
-            &direction,
-            self.movement_angular_velocity,
-            dtime,
-        )
+        let yaw = direction.x;
+        let pitch = direction.y;
+        let effective_yaw = self.movement_angular_velocity * yaw * dtime;
+        let effective_pitch = self.movement_angular_velocity * pitch * dtime;
+        let forward = self.target - self.position;
+        let normalized_forward = glm::normalize(&forward);
+        let rotated_forward_yaw = glm::rotate_vec3(&normalized_forward, effective_yaw, &self.up);
+        let right = glm::normalize(&glm::cross(&self.up, &rotated_forward_yaw));
+        let rotated_forward_pitch = glm::rotate_vec3(&rotated_forward_yaw, effective_pitch, &right);
+        self.target = self.position + rotated_forward_pitch;
     }
 
     pub fn get_view_matrix(&self) -> glm::TMat4<f32> {

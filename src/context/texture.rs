@@ -41,6 +41,8 @@ impl GLContext {
         }
         texture.bind();
 
+        log::debug!("bound texture {texture_unit:?}: {texture:?}");
+
         if generate_mipmap {
             texture.generate_mipmap();
         }
@@ -65,6 +67,9 @@ impl GLContext {
             gl::ActiveTexture(texture_unit.into());
         }
         texture.unbind();
+
+        log::debug!("unbound texture {texture_unit:?}: {texture:?}");
+
         Some(obj_desc)
     }
 
@@ -73,6 +78,7 @@ impl GLContext {
         unsafe { gl::GetIntegerv(gl::MAX_TEXTURE_IMAGE_UNITS, &mut max_active_textures) };
         gl_check_err()?;
         let maximum: usize = try_into!(max_active_textures);
+        log::debug!("maximum allowed texture units: {maximum}");
         Ok(vec![None; maximum])
     }
 }

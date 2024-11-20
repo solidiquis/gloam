@@ -1,4 +1,6 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+use std::fmt::Debug;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct GLObjectDescriptor {
     pub(super) internal_id: usize,
     pub(super) kind: GLObjectDescriptorKind,
@@ -31,5 +33,11 @@ impl GLObjectDescriptor {
             internal_id,
             kind: GLObjectDescriptorKind::Texture(id),
         }
+    }
+}
+
+impl Debug for GLObjectDescriptor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <GLObjectDescriptorKind as Debug>::fmt(&self.kind, f)
     }
 }

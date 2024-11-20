@@ -25,17 +25,21 @@ pub struct VertexObject {
     pub(crate) usage: Usage,
 }
 
-#[derive(Debug)]
+#[derive(derivative::Derivative)]
+#[derivative(Debug)]
 pub struct VertexAttribute {
     pub(crate) name: String,
     pub(crate) component_size: GLint,
+    #[derivative(Debug = "ignore")]
     pub(crate) data: Vec<f32>,
     pub(crate) normalized: bool,
 }
 
-#[derive(Debug)]
+#[derive(derivative::Derivative)]
+#[derivative(Debug)]
 pub struct IndexObject {
     pub(crate) gl_object_id: GLuint,
+    #[derivative(Debug = "ignore")]
     pub(crate) indexes: Vec<u32>,
 }
 
