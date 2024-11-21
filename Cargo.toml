@@ -11,7 +11,4 @@ image = "0.25.4"
 log = "0.4.22"
 nalgebra-glm = "0.19.0"
 thiserror = "1.0.64"
-
-[dev-dependencies]
-anyhow = "1.0.93"
 env_logger = "0.11.5"

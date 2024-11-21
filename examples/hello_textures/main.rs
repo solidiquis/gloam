@@ -1,8 +1,10 @@
 use glfw::{Key, Modifiers, WindowEvent};
 use gloam::{
     app,
+    error::Result,
     shader::{program::Linker, Shader, ShaderType},
     texture::{TextureBuilder, TextureFilterParam, TextureWrapParam},
+    uniform::Uniform,
     vertex::{Primitive, Usage, VOBInit, VertexObjectBuilder},
 };
 use std::path::PathBuf;
@@ -33,9 +35,9 @@ const INDICES: [u32; 6] = [
     1, 2, 3, // second triangle
 ];
 
-fn main() {
+fn main() -> Result<()> {
     env_logger::init();
-    let (mut window, mut ctx) = app::init_default_opengl_3_3("HelloTextures").unwrap();
+    let (mut window, mut ctx) = app::init_default_opengl_3_3("HelloTextures")?;
     window.set_key_polling(true);
     window.set_framebuffer_size_polling(true);
 
@@ -48,14 +50,14 @@ fn main() {
         .join("hello_textures")
         .join("hello_textures_fragment.glsl");
 
-    let vertex_shader = Shader::new(vertex_shader_src, ShaderType::Vertex).unwrap();
-    let fragment_shader = Shader::new(fragment_shader_src, ShaderType::Fragment).unwrap();
+    let vertex_shader = Shader::new(vertex_shader_src, ShaderType::Vertex)?;
+    let fragment_shader = Shader::new(fragment_shader_src, ShaderType::Fragment)?;
 
     let program = Linker::new()
         .attach_shader(vertex_shader)
         .attach_shader(fragment_shader)
         .link(&mut ctx)
-        .unwrap();
+        ?;
 
     let texture_wood_src = PathBuf::new()
         .join("examples")
@@ -67,7 +69,7 @@ fn main() {
         .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
         .map(|b| b.mag_filter(TextureFilterParam::Linear))
         .and_then(|b| b.build(&mut ctx))
-        .unwrap();
+        ?;
 
     let texture_wood_smiley = PathBuf::new()
         .join("examples")
@@ -79,7 +81,7 @@ fn main() {
         .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
         .map(|b| b.mag_filter(TextureFilterParam::Linear))
         .and_then(|b| b.build(&mut ctx))
-        .unwrap();
+        ?;
 
     let surface = VertexObjectBuilder::<VOBInit>::new(Primitive::Triangles, Usage::Static)
         .attribute("apos", 3, &POSITION_ATTR)
@@ -87,19 +89,17 @@ fn main() {
         .and_then(|b| b.attribute("atex", 2, &TEXTURE_ATTR))
         .and_then(|b| b.indexes(&INDICES))
         .and_then(|b| b.build(&mut ctx, program))
-        .unwrap();
+        ?;
 
-    ctx.try_use_program(program).unwrap();
-    ctx.try_bind_vertex_object(surface).unwrap();
-    let texture_unit_wood = ctx.activate_texture(texture_wood, true).unwrap();
-    let texture_unit_smiley = ctx.activate_texture(texture_smiley, true).unwrap();
+    ctx.try_use_program(program)?;
+    ctx.try_bind_vertex_object(surface)?;
+    let texture_unit_wood = ctx.activate_texture(texture_wood, true)?;
+    let texture_unit_smiley = ctx.activate_texture(texture_smiley, true)?;
 
-    ctx.try_set_uniform_1i("texture1", texture_unit_wood)
-        .unwrap();
-    ctx.try_set_uniform_1i("texture2", texture_unit_smiley)
-        .unwrap();
+    ctx.try_set_uniform(&Uniform::new_1i("texture1", texture_unit_wood))?;
+    ctx.try_set_uniform(&Uniform::new_1i("texture2", texture_unit_smiley))?;
 
-    let _ = window.run_event_loop(|win, event| {
+    window.run_event_loop(|win, event| {
         match event {
             None => (),
             Some(win_event) => match win_event {
@@ -111,9 +111,9 @@ fn main() {
                 _ => (),
             },
         }
-        ctx.try_render().unwrap();
+        ctx.try_render()?;
         win.draw();
 
         Ok(())
-    });
+    })
 }

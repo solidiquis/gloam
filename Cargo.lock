@@ -438,7 +438,6 @@ dependencies = [
 name = "gloam"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "derivative",
  "env_logger",
  "gl",
