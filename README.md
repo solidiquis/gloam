@@ -33,3 +33,6 @@ A work-in-progress OpenGL library for Rust built on top of [gl](https://docs.rs/
 
 ### [Hello Lighting](./examples/hello_lighting/main.rs)
 ![missing GIF](./demos/hello_lighting.gif)
+
+### [Hello Phong Illumination](./examples/hello_phong_illumination/main.rs)
+![missing mov](./demos/hello_phong_illumination.mov)
