@@ -38,5 +38,10 @@ A work-in-progress OpenGL library for Rust built on top of [gl](https://docs.rs/
 
 **Note**: Degraded video quality due to compression
 
-https://github.com/user-attachments/assets/2a6387cb-a14f-4e03-a8a8-297a1f886df7
+
+https://github.com/user-attachments/assets/41ff1d8a-e02f-4ef5-94e4-cdf3e0a91fc4
+
+
+
+
 
