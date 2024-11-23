@@ -35,4 +35,8 @@ A work-in-progress OpenGL library for Rust built on top of [gl](https://docs.rs/
 ![missing GIF](./demos/hello_lighting.gif)
 
 ### [Hello Phong Illumination](./examples/hello_phong_illumination/main.rs)
-![missing mov](./demos/hello_phong_illumination.mov)
+
+**Note**: Degraded video quality due to compression
+
+https://github.com/user-attachments/assets/2a6387cb-a14f-4e03-a8a8-297a1f886df7
+
