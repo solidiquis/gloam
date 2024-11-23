@@ -52,6 +52,8 @@ pub struct VertexObjectBuilder<T> {
     pub(crate) state: PhantomData<T>,
 }
 
+pub type VOBuilder = VertexObjectBuilder<VOBInit>;
+
 pub struct VOBInit;
 pub struct VOBAttr;
 

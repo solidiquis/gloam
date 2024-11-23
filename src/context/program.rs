@@ -84,12 +84,24 @@ impl GLContext {
                 UniformType::D4(v) => gl::Uniform4d(loc, v.x, v.y, v.z, v.w),
                 UniformType::F4(v) => gl::Uniform4f(loc, v.x, v.y, v.z, v.w),
                 UniformType::I4(v) => gl::Uniform4i(loc, v.x, v.y, v.z, v.w),
-                UniformType::DMat2(v) => gl::UniformMatrix2dv(loc, 1, transpose, glm::value_ptr(&v).as_ptr()),
-                UniformType::FMat2(v) => gl::UniformMatrix2fv(loc, 1, transpose, glm::value_ptr(&v).as_ptr()),
-                UniformType::DMat3(v) => gl::UniformMatrix3dv(loc, 1, transpose, glm::value_ptr(&v).as_ptr()),
-                UniformType::FMat3(v) => gl::UniformMatrix3fv(loc, 1, transpose, glm::value_ptr(&v).as_ptr()),
-                UniformType::DMat4(v) => gl::UniformMatrix4dv(loc, 1, transpose, glm::value_ptr(&v).as_ptr()),
-                UniformType::FMat4(v) => gl::UniformMatrix4fv(loc, 1, transpose, glm::value_ptr(&v).as_ptr()),
+                UniformType::DMat2(v) => {
+                    gl::UniformMatrix2dv(loc, 1, transpose, glm::value_ptr(&v).as_ptr())
+                }
+                UniformType::FMat2(v) => {
+                    gl::UniformMatrix2fv(loc, 1, transpose, glm::value_ptr(&v).as_ptr())
+                }
+                UniformType::DMat3(v) => {
+                    gl::UniformMatrix3dv(loc, 1, transpose, glm::value_ptr(&v).as_ptr())
+                }
+                UniformType::FMat3(v) => {
+                    gl::UniformMatrix3fv(loc, 1, transpose, glm::value_ptr(&v).as_ptr())
+                }
+                UniformType::DMat4(v) => {
+                    gl::UniformMatrix4dv(loc, 1, transpose, glm::value_ptr(&v).as_ptr())
+                }
+                UniformType::FMat4(v) => {
+                    gl::UniformMatrix4fv(loc, 1, transpose, glm::value_ptr(&v).as_ptr())
+                }
             }
         })
     }

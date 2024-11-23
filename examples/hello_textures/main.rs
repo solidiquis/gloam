@@ -56,8 +56,7 @@ fn main() -> Result<()> {
     let program = Linker::new()
         .attach_shader(vertex_shader)
         .attach_shader(fragment_shader)
-        .link(&mut ctx)
-        ?;
+        .link(&mut ctx)?;
 
     let texture_wood_src = PathBuf::new()
         .join("examples")
@@ -68,8 +67,7 @@ fn main() -> Result<()> {
         .map(|b| b.t_wrap(TextureWrapParam::Repeat))
         .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
         .map(|b| b.mag_filter(TextureFilterParam::Linear))
-        .and_then(|b| b.build(&mut ctx))
-        ?;
+        .and_then(|b| b.build(&mut ctx))?;
 
     let texture_wood_smiley = PathBuf::new()
         .join("examples")
@@ -80,16 +78,14 @@ fn main() -> Result<()> {
         .map(|b| b.t_wrap(TextureWrapParam::Repeat))
         .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
         .map(|b| b.mag_filter(TextureFilterParam::Linear))
-        .and_then(|b| b.build(&mut ctx))
-        ?;
+        .and_then(|b| b.build(&mut ctx))?;
 
     let surface = VertexObjectBuilder::<VOBInit>::new(Primitive::Triangles, Usage::Static)
         .attribute("apos", 3, &POSITION_ATTR)
         .and_then(|b| b.attribute("acol", 3, &COLOR_ATTR))
         .and_then(|b| b.attribute("atex", 2, &TEXTURE_ATTR))
         .and_then(|b| b.indexes(&INDICES))
-        .and_then(|b| b.build(&mut ctx, program))
-        ?;
+        .and_then(|b| b.build(&mut ctx, program))?;
 
     ctx.try_use_program(program)?;
     ctx.try_bind_vertex_object(surface)?;

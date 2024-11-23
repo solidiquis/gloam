@@ -1,7 +1,7 @@
 use glfw::{Action, Key, Modifiers, WindowEvent};
 use gloam::{
     app::init_default_opengl_3_3,
-    camera::Camera,
+    camera::{Camera, FreeCamera},
     context::ClearMask,
     error::Result,
     polygons,
@@ -63,7 +63,9 @@ fn main() -> Result<()> {
     let specular_light_intensity = 0.5;
 
     let light_source = {
-        let color_attrs = light_color.as_slice().repeat(polygons::cube::POSITION_ATTR.len() / 3);
+        let color_attrs = light_color
+            .as_slice()
+            .repeat(polygons::cube::POSITION_ATTR.len() / 3);
 
         VertexObjectBuilder::<VOBInit>::new(Primitive::Triangles, Usage::Static)
             .attribute("position", 3, &polygons::cube::POSITION_ATTR)?
@@ -71,7 +73,7 @@ fn main() -> Result<()> {
             .build(&mut ctx, light_source_program)?
     };
 
-    let camera = Camera::new(
+    let camera = FreeCamera::new(
         glm::vec3(0.0, 0.0, 6.0),
         glm::vec3(0.0, 0.0, 0.0),
         glm::vec3(0.0, 1.0, 0.0),
@@ -142,8 +144,14 @@ fn main() -> Result<()> {
         ctx.try_set_uniform(&Uniform::new_3f("cameraPosition", camera.position))?;
         ctx.try_set_uniform(&Uniform::new_3f("lightPosition", light_position))?;
         ctx.try_set_uniform(&Uniform::new_3f("lightColor", light_color))?;
-        ctx.try_set_uniform(&Uniform::new_1f("ambientLightIntensity", ambient_light_intensity))?;
-        ctx.try_set_uniform(&Uniform::new_1f("specularLightIntensity", specular_light_intensity))?;
+        ctx.try_set_uniform(&Uniform::new_1f(
+            "ambientLightIntensity",
+            ambient_light_intensity,
+        ))?;
+        ctx.try_set_uniform(&Uniform::new_1f(
+            "specularLightIntensity",
+            specular_light_intensity,
+        ))?;
         ctx.try_render()?;
 
         win.draw();

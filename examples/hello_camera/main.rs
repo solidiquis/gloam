@@ -1,7 +1,7 @@
 use glfw::{Action, Key, Modifiers, MouseButton, WindowEvent};
 use gloam::{
     app,
-    camera::Camera,
+    camera::{Camera, FreeCamera},
     context::ClearMask,
     error::Result,
     shader::{program::Linker, Shader, ShaderType},
@@ -26,7 +26,7 @@ fn main() -> Result<()> {
         glm::vec3(-1.3, 1.0, -1.5),
     ];
 
-    let (mut window, mut ctx) = app::init_default_opengl_3_3("HelloCamera").unwrap();
+    let (mut window, mut ctx) = app::init_default_opengl_3_3("HelloFreeCamera").unwrap();
     window.set_key_polling(true);
     window.set_mouse_button_polling(true);
     window.set_cursor_pos_polling(true);
@@ -111,14 +111,18 @@ fn main() -> Result<()> {
     ctx.try_set_uniform(&Uniform::new_1i("metal", texture_unit_metal))?;
     ctx.try_set_uniform(&Uniform::new_1i("sift", texture_unit_sift))?;
 
-    let mut camera = Camera::new(
+    let mut camera = FreeCamera::new(
         glm::vec3(0.0, 0.0, 5.0),
         glm::vec3(0.0, 0.0, 0.0),
         glm::vec3(0.0, 1.0, 0.0),
         10.0,
         0.2,
     );
-    ctx.try_set_uniform(&Uniform::new_mat4fv("view", camera.get_view_matrix(), false))?;
+    ctx.try_set_uniform(&Uniform::new_mat4fv(
+        "view",
+        camera.get_view_matrix(),
+        false,
+    ))?;
 
     let projection_matrix = glm::perspective(PI / 4.0, aspect_ratio, 0.1, 100.0);
     ctx.try_set_uniform(&Uniform::new_mat4fv("projection", projection_matrix, false))?;
@@ -151,7 +155,11 @@ fn main() -> Result<()> {
                             } else {
                                 camera.move_forward(dtime);
                             }
-                            ctx.try_set_uniform(&Uniform::new_mat4fv("view", camera.get_view_matrix(), false))?;
+                            ctx.try_set_uniform(&Uniform::new_mat4fv(
+                                "view",
+                                camera.get_view_matrix(),
+                                false,
+                            ))?;
                         }
 
                         (Key::S, _, Action::Press | Action::Repeat, _) => {
@@ -163,7 +171,11 @@ fn main() -> Result<()> {
                             } else {
                                 camera.move_backward(dtime);
                             }
-                            ctx.try_set_uniform(&Uniform::new_mat4fv("view", camera.get_view_matrix(), false))?;
+                            ctx.try_set_uniform(&Uniform::new_mat4fv(
+                                "view",
+                                camera.get_view_matrix(),
+                                false,
+                            ))?;
                         }
 
                         (Key::D, _, Action::Press | Action::Repeat, _) => {
@@ -175,7 +187,11 @@ fn main() -> Result<()> {
                             } else {
                                 camera.move_right(dtime);
                             }
-                            ctx.try_set_uniform(&Uniform::new_mat4fv("view", camera.get_view_matrix(), false))?;
+                            ctx.try_set_uniform(&Uniform::new_mat4fv(
+                                "view",
+                                camera.get_view_matrix(),
+                                false,
+                            ))?;
                         }
 
                         (Key::A, _, Action::Press | Action::Repeat, _) => {
@@ -187,7 +203,11 @@ fn main() -> Result<()> {
                             } else {
                                 camera.move_left(dtime);
                             }
-                            ctx.try_set_uniform(&Uniform::new_mat4fv("view", camera.get_view_matrix(), false))?;
+                            ctx.try_set_uniform(&Uniform::new_mat4fv(
+                                "view",
+                                camera.get_view_matrix(),
+                                false,
+                            ))?;
                         }
 
                         (Key::W, _, Action::Release, _)
@@ -216,7 +236,11 @@ fn main() -> Result<()> {
                     cursor_x = new_cursor_x;
                     cursor_y = new_cursor_y;
                     camera.rotate_to_direction(direction, dtime);
-                    ctx.try_set_uniform(&Uniform::new_mat4fv("view", camera.get_view_matrix(), false))?;
+                    ctx.try_set_uniform(&Uniform::new_mat4fv(
+                        "view",
+                        camera.get_view_matrix(),
+                        false,
+                    ))?;
                 }
                 WindowEvent::FramebufferSize(width, height) => ctx.viewport(0, 0, width, height),
                 _ => (),

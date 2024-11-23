@@ -68,4 +68,8 @@ impl GLContext {
     pub fn vertex_object_bound(&self, vo_desc: GLObjectDescriptor) -> bool {
         self.bound_vertex_object.is_some_and(|od| od == vo_desc)
     }
+
+    pub fn get_current_bound_vertex_object(&self) -> Option<GLObjectDescriptor> {
+        self.bound_vertex_object
+    }
 }
