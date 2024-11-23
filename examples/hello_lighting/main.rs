@@ -1,11 +1,12 @@
-use anyhow::Result;
 use glfw::{Action, Key, Modifiers, WindowEvent};
 use gloam::{
     app::init_default_opengl_3_3,
-    camera::Camera,
+    camera::{Camera, FreeCamera},
     context::ClearMask,
+    error::Result,
     polygons,
     shader::{program::Linker, Shader, ShaderType},
+    uniform::Uniform,
     vertex::{Primitive, Usage, VOBInit, VertexObjectBuilder},
 };
 use nalgebra_glm as glm;
@@ -22,26 +23,26 @@ fn main() -> Result<()> {
 
     let main_path = PathBuf::from("examples").join("hello_lighting");
 
-    let icasohedron_program = {
-        let vs_src = main_path.join("icasohedron_vs.glsl");
-        let fs_src = main_path.join("icasohedron_fs.glsl");
+    let cube_program = {
+        let vs_src = main_path.join("cube_vs.glsl");
+        let fs_src = main_path.join("cube_fs.glsl");
 
-        let icasohedron_vs = Shader::new(vs_src, ShaderType::Vertex)?;
-        let icasohedron_fs = Shader::new(fs_src, ShaderType::Fragment)?;
+        let cube_vs = Shader::new(vs_src, ShaderType::Vertex)?;
+        let cube_fs = Shader::new(fs_src, ShaderType::Fragment)?;
         Linker::new()
-            .attach_shader(icasohedron_vs)
-            .attach_shader(icasohedron_fs)
+            .attach_shader(cube_vs)
+            .attach_shader(cube_fs)
             .link(&mut ctx)?
     };
 
-    let icasohedron = {
+    let cube = {
         let color_attrs = [0.78, 0.38, 0.19].repeat(polygons::cube::POSITION_ATTR.len() / 3);
 
         VertexObjectBuilder::<VOBInit>::new(Primitive::Triangles, Usage::Static)
             .attribute("position", 3, &polygons::cube::POSITION_ATTR)?
             .attribute("normal", 3, &polygons::cube::NORMAL_ATTR)?
             .attribute("color", 3, &color_attrs)?
-            .build(&mut ctx, icasohedron_program)?
+            .build(&mut ctx, cube_program)?
     };
 
     let light_source_program = {
@@ -56,13 +57,15 @@ fn main() -> Result<()> {
             .link(&mut ctx)?
     };
 
-    let light_color = [1.0, 1.0, 1.0];
+    let light_color = glm::vec3(1.0, 1.0, 1.0);
     let light_position = glm::vec3(-1.0, 0.0, 1.5);
     let ambient_light_intensity = 0.1;
     let specular_light_intensity = 0.5;
 
     let light_source = {
-        let color_attrs = light_color.repeat(polygons::cube::POSITION_ATTR.len() / 3);
+        let color_attrs = light_color
+            .as_slice()
+            .repeat(polygons::cube::POSITION_ATTR.len() / 3);
 
         VertexObjectBuilder::<VOBInit>::new(Primitive::Triangles, Usage::Static)
             .attribute("position", 3, &polygons::cube::POSITION_ATTR)?
@@ -70,7 +73,7 @@ fn main() -> Result<()> {
             .build(&mut ctx, light_source_program)?
     };
 
-    let camera = Camera::new(
+    let camera = FreeCamera::new(
         glm::vec3(0.0, 0.0, 6.0),
         glm::vec3(0.0, 0.0, 0.0),
         glm::vec3(0.0, 1.0, 0.0),
@@ -103,59 +106,52 @@ fn main() -> Result<()> {
         // Light source
         ctx.try_bind_vertex_object(light_source)?;
         ctx.try_use_program(light_source_program)?;
-        ctx.try_set_uniform_matrix_4fv("view", &glm::value_ptr(&view_matrix), false)?;
-        ctx.try_set_uniform_matrix_4fv(
+        ctx.try_set_uniform(&Uniform::new_mat4fv("view", view_matrix, false))?;
+        ctx.try_set_uniform(&Uniform::new_mat4fv(
             "model",
-            &glm::value_ptr(&glm::scale(
+            glm::scale(
                 &glm::translate(&glm::identity(), &light_position),
                 &glm::vec3(0.25, 0.25, 0.25),
-            )),
+            ),
             false,
-        )?;
-        ctx.try_set_uniform_matrix_4fv(
+        ))?;
+        ctx.try_set_uniform(&Uniform::new_mat4fv(
             "projection",
-            &glm::value_ptr(&glm::perspective(aspect_ratio, PI / 4.0, 0.1, 100.0)),
+            glm::perspective(aspect_ratio, PI / 4.0, 0.1, 100.0),
             false,
-        )?;
+        ))?;
         ctx.try_render()?;
 
         // Cube
-        ctx.try_bind_vertex_object(icasohedron)?;
-        ctx.try_use_program(icasohedron_program)?;
-        ctx.try_set_uniform_matrix_4fv("view", &glm::value_ptr(&view_matrix), false)?;
+        ctx.try_bind_vertex_object(cube)?;
+        ctx.try_use_program(cube_program)?;
+        ctx.try_set_uniform(&Uniform::new_mat4fv("view", view_matrix, false))?;
         let mut model_matrix = glm::rotate(
             &glm::identity(),
             win.get_time() as f32,
             &glm::vec3(0.0, 1.0, 0.0),
         );
         model_matrix = glm::scale(&model_matrix, &glm::vec3(2.0, 2.0, 2.0));
-        ctx.try_set_uniform_matrix_4fv("model", &glm::value_ptr(&model_matrix), false)?;
+        ctx.try_set_uniform(&Uniform::new_mat4fv("model", model_matrix, false))?;
         let normal_matrix = model_matrix
             .fixed_view::<3, 3>(0, 0)
             .try_inverse()
             .unwrap()
             .transpose();
-        ctx.try_set_uniform_matrix_3fv("normalMatrix", &glm::value_ptr(&normal_matrix), false)?;
-        ctx.try_set_uniform_matrix_4fv(
-            "projection",
-            &glm::value_ptr(&glm::perspective(aspect_ratio, PI / 4.0, 0.1, 100.0)),
-            false,
-        )?;
-        ctx.try_set_uniform_3f(
-            "cameraPosition",
-            camera.position.x,
-            camera.position.y,
-            camera.position.z,
-        )?;
-        ctx.try_set_uniform_3f(
-            "lightPosition",
-            light_position.x,
-            light_position.y,
-            light_position.z,
-        )?;
-        ctx.try_set_uniform_3f("lightColor", light_color[0], light_color[1], light_color[2])?;
-        ctx.try_set_uniform_1f("ambientLightIntensity", ambient_light_intensity)?;
-        ctx.try_set_uniform_1f("specularLightIntensity", specular_light_intensity)?;
+        ctx.try_set_uniform(&Uniform::new_mat3fv("normalMatrix", normal_matrix, false))?;
+        let projection_matrix = glm::perspective(aspect_ratio, PI / 4.0, 0.1, 100.0);
+        ctx.try_set_uniform(&Uniform::new_mat4fv("projection", projection_matrix, false))?;
+        ctx.try_set_uniform(&Uniform::new_3f("cameraPosition", camera.position))?;
+        ctx.try_set_uniform(&Uniform::new_3f("lightPosition", light_position))?;
+        ctx.try_set_uniform(&Uniform::new_3f("lightColor", light_color))?;
+        ctx.try_set_uniform(&Uniform::new_1f(
+            "ambientLightIntensity",
+            ambient_light_intensity,
+        ))?;
+        ctx.try_set_uniform(&Uniform::new_1f(
+            "specularLightIntensity",
+            specular_light_intensity,
+        ))?;
         ctx.try_render()?;
 
         win.draw();

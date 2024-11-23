@@ -1,3 +1,4 @@
+use crate::object::GLObjectDescriptor;
 use gl::types::GLenum;
 use thiserror::Error;
 
@@ -20,6 +21,9 @@ pub enum Error {
     #[error("specified vertex object is not currently bound")]
     VertexObjectNotBound,
 
+    #[error("could not find object with provided descriptor in registry {0:?}")]
+    ObjectNotFound(GLObjectDescriptor),
+
     #[error("no program is currently in use")]
     NoActiveProgram,
 
@@ -38,8 +42,17 @@ pub enum Error {
     #[error("failed to query location of {0} uniform")]
     UniformLocNotFound(String),
 
+    #[error("uniform '{0}' not found in program associated with mesh")]
+    UniformDoesNotExist(String),
+
     #[error("an error occurred while linking program: {0}")]
     ProgramLink(String),
+
+    #[error("can't use program while another is in use")]
+    AnotherProgramInUse,
+
+    #[error("can't bind vertex object while another is bound")]
+    AnotherVertexObjectBound,
 
     #[error("an error occurred while compiling {shader_name}: {reason}")]
     ShaderCompile { shader_name: String, reason: String },

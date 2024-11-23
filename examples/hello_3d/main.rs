@@ -5,12 +5,13 @@ use gloam::{
     error::Result,
     shader::{program::Linker, Shader, ShaderType},
     texture::{TextureBuilder, TextureFilterParam, TextureWrapParam},
+    uniform::Uniform,
     vertex::{Primitive, Usage, VOBInit, VertexObjectBuilder},
 };
 use nalgebra_glm as glm;
 use std::{f32::consts::PI, path::PathBuf, thread};
 
-fn main() {
+fn main() -> Result<()> {
     let cube_positions: [glm::TVec3<f32>; 10] = [
         glm::vec3(0.0, 0.0, 0.0),
         glm::vec3(2.0, 5.0, -15.0),
@@ -24,7 +25,7 @@ fn main() {
         glm::vec3(-1.3, 1.0, -1.5),
     ];
 
-    let (mut window, mut ctx) = app::init_default_opengl_3_3("Hello3D").unwrap();
+    let (mut window, mut ctx) = app::init_default_opengl_3_3("Hello3D")?;
     window.set_key_polling(true);
     window.set_framebuffer_size_polling(true);
 
@@ -44,14 +45,13 @@ fn main() {
         .join("hello_3d")
         .join("hello_3d_fragment.glsl");
 
-    let vertex_shader = Shader::new(vertex_shader_src, ShaderType::Vertex).unwrap();
-    let fragment_shader = Shader::new(fragment_shader_src, ShaderType::Fragment).unwrap();
+    let vertex_shader = Shader::new(vertex_shader_src, ShaderType::Vertex)?;
+    let fragment_shader = Shader::new(fragment_shader_src, ShaderType::Fragment)?;
 
     let program = Linker::new()
         .attach_shader(vertex_shader)
         .attach_shader(fragment_shader)
-        .link(&mut ctx)
-        .unwrap();
+        .link(&mut ctx)?;
 
     let texture_metal_src = PathBuf::new()
         .join("examples")
@@ -86,16 +86,14 @@ fn main() {
         .map(|b| b.t_wrap(TextureWrapParam::Repeat))
         .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
         .map(|b| b.mag_filter(TextureFilterParam::Linear))
-        .and_then(|b| b.build(&mut ctx))
-        .unwrap();
+        .and_then(|b| b.build(&mut ctx))?;
 
     let texture_sift = raw_texture_sift
         .map(|b| b.s_wrap(TextureWrapParam::Repeat))
         .map(|b| b.t_wrap(TextureWrapParam::Repeat))
         .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
         .map(|b| b.mag_filter(TextureFilterParam::Linear))
-        .and_then(|b| b.build(&mut ctx))
-        .unwrap();
+        .and_then(|b| b.build(&mut ctx))?;
 
     let surface = VertexObjectBuilder::<VOBInit>::new(Primitive::Triangles, Usage::Static)
         .attribute("pos_attr", 3, &POSITION_ATTR)
@@ -108,19 +106,17 @@ fn main() {
     let texture_unit_metal = ctx.activate_texture(texture_metal, true).unwrap();
     let texture_unit_sift = ctx.activate_texture(texture_sift, true).unwrap();
 
-    ctx.try_set_uniform_1i("metal", texture_unit_metal).unwrap();
-    ctx.try_set_uniform_1i("sift", texture_unit_sift).unwrap();
+    ctx.try_set_uniform(&Uniform::new_1i("metal", texture_unit_metal))?;
+    ctx.try_set_uniform(&Uniform::new_1i("sift", texture_unit_sift))?;
 
     let identity_matrix = glm::identity::<f32, 4>();
     let view_matrix = glm::translate(&identity_matrix, &glm::vec3(0.0, 0.0, -3.0));
-    ctx.try_set_uniform_matrix_4fv("view", glm::value_ptr(&view_matrix), false)
-        .unwrap();
+    ctx.try_set_uniform(&Uniform::new_mat4fv("view", view_matrix, false))?;
 
     let projection_matrix = glm::perspective(PI / 4.0, aspect_ratio, 0.1, 100.0);
-    ctx.try_set_uniform_matrix_4fv("projection", glm::value_ptr(&projection_matrix), false)
-        .unwrap();
+    ctx.try_set_uniform(&Uniform::new_mat4fv("projection", projection_matrix, false))?;
 
-    let _ = window.run_event_loop(|win, event| {
+    window.run_event_loop(|win, event| {
         match event {
             None => (),
             Some(win_event) => match win_event {
@@ -141,14 +137,13 @@ fn main() {
             let mut model_matrix = glm::translate(&identity_matrix, position);
             model_matrix =
                 glm::rotate(&model_matrix, PI * angle / 180.0, &glm::vec3(1.0, 0.3, 0.5));
-            ctx.try_set_uniform_matrix_4fv("model", glm::value_ptr(&model_matrix), false)
-                .unwrap();
-            ctx.try_render().unwrap();
+            ctx.try_set_uniform(&Uniform::new_mat4fv("model", model_matrix, false))?;
+            ctx.try_render()?;
         }
         win.draw();
 
         Ok(())
-    });
+    })
 }
 
 const POSITION_ATTR: [f32; 108] = [

@@ -31,9 +31,13 @@ impl GLContext {
         Ok(())
     }
 
+    /// Will return if a different vertex object (i.e. VAO) is currently bound. Detach the current before
+    /// binding a new one.
     pub fn try_bind_vertex_object(&mut self, vo_desc: GLObjectDescriptor) -> Result<()> {
         if self.bound_vertex_object.is_some_and(|vo| vo == vo_desc) {
             return Ok(());
+        } else if self.bound_vertex_object.is_some() {
+            return Err(Error::AnotherVertexObjectBound);
         }
         let vo = self.get_vertex_object(vo_desc)?;
         unsafe {
@@ -47,6 +51,7 @@ impl GLContext {
         Ok(())
     }
 
+    /// Unbinds the current vertex object i.e. VAO.
     pub fn unbind_current_vertex_object(&mut self) -> Option<GLObjectDescriptor> {
         let obj_desc = self.bound_vertex_object.take()?;
         let vo = self.get_vertex_object(obj_desc).ok()?;
@@ -62,5 +67,9 @@ impl GLContext {
 
     pub fn vertex_object_bound(&self, vo_desc: GLObjectDescriptor) -> bool {
         self.bound_vertex_object.is_some_and(|od| od == vo_desc)
+    }
+
+    pub fn get_current_bound_vertex_object(&self) -> Option<GLObjectDescriptor> {
+        self.bound_vertex_object
     }
 }

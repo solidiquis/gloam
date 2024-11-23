@@ -1,17 +1,18 @@
 use glfw::{Action, Key, Modifiers, MouseButton, WindowEvent};
 use gloam::{
     app,
-    camera::Camera,
+    camera::{Camera, FreeCamera},
     context::ClearMask,
     error::Result,
     shader::{program::Linker, Shader, ShaderType},
     texture::{TextureBuilder, TextureFilterParam, TextureWrapParam},
+    uniform::Uniform,
     vertex::{Primitive, Usage, VOBInit, VertexObjectBuilder},
 };
 use nalgebra_glm as glm;
 use std::{collections::HashSet, f32::consts::PI, path::PathBuf, thread};
 
-fn main() {
+fn main() -> Result<()> {
     let cube_positions: [glm::TVec3<f32>; 10] = [
         glm::vec3(0.0, 0.0, 0.0),
         glm::vec3(2.0, 5.0, -15.0),
@@ -25,7 +26,7 @@ fn main() {
         glm::vec3(-1.3, 1.0, -1.5),
     ];
 
-    let (mut window, mut ctx) = app::init_default_opengl_3_3("HelloCamera").unwrap();
+    let (mut window, mut ctx) = app::init_default_opengl_3_3("HelloFreeCamera").unwrap();
     window.set_key_polling(true);
     window.set_mouse_button_polling(true);
     window.set_cursor_pos_polling(true);
@@ -47,14 +48,13 @@ fn main() {
         .join("hello_camera")
         .join("hello_camera_fragment.glsl");
 
-    let vertex_shader = Shader::new(vertex_shader_src, ShaderType::Vertex).unwrap();
-    let fragment_shader = Shader::new(fragment_shader_src, ShaderType::Fragment).unwrap();
+    let vertex_shader = Shader::new(vertex_shader_src, ShaderType::Vertex)?;
+    let fragment_shader = Shader::new(fragment_shader_src, ShaderType::Fragment)?;
 
     let program = Linker::new()
         .attach_shader(vertex_shader)
         .attach_shader(fragment_shader)
-        .link(&mut ctx)
-        .unwrap();
+        .link(&mut ctx)?;
 
     let texture_metal_src = PathBuf::new()
         .join("examples")
@@ -89,44 +89,43 @@ fn main() {
         .map(|b| b.t_wrap(TextureWrapParam::Repeat))
         .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
         .map(|b| b.mag_filter(TextureFilterParam::Linear))
-        .and_then(|b| b.build(&mut ctx))
-        .unwrap();
+        .and_then(|b| b.build(&mut ctx))?;
 
     let texture_sift = raw_texture_sift
         .map(|b| b.s_wrap(TextureWrapParam::Repeat))
         .map(|b| b.t_wrap(TextureWrapParam::Repeat))
         .map(|b| b.min_filter(TextureFilterParam::LinearMipmapLinear))
         .map(|b| b.mag_filter(TextureFilterParam::Linear))
-        .and_then(|b| b.build(&mut ctx))
-        .unwrap();
+        .and_then(|b| b.build(&mut ctx))?;
 
     let surface = VertexObjectBuilder::<VOBInit>::new(Primitive::Triangles, Usage::Static)
         .attribute("pos_attr", 3, &POSITION_ATTR)
         .and_then(|b| b.attribute("tex_attr", 2, &TEXTURE_ATTR))
-        .and_then(|b| b.build(&mut ctx, program))
-        .unwrap();
+        .and_then(|b| b.build(&mut ctx, program))?;
 
-    ctx.try_use_program(program).unwrap();
-    ctx.try_bind_vertex_object(surface).unwrap();
-    let texture_unit_metal = ctx.activate_texture(texture_metal, true).unwrap();
-    let texture_unit_sift = ctx.activate_texture(texture_sift, true).unwrap();
+    ctx.try_use_program(program)?;
+    ctx.try_bind_vertex_object(surface)?;
+    let texture_unit_metal = ctx.activate_texture(texture_metal, true)?;
+    let texture_unit_sift = ctx.activate_texture(texture_sift, true)?;
 
-    ctx.try_set_uniform_1i("metal", texture_unit_metal).unwrap();
-    ctx.try_set_uniform_1i("sift", texture_unit_sift).unwrap();
+    ctx.try_set_uniform(&Uniform::new_1i("metal", texture_unit_metal))?;
+    ctx.try_set_uniform(&Uniform::new_1i("sift", texture_unit_sift))?;
 
-    let mut camera = Camera::new(
+    let mut camera = FreeCamera::new(
         glm::vec3(0.0, 0.0, 5.0),
         glm::vec3(0.0, 0.0, 0.0),
         glm::vec3(0.0, 1.0, 0.0),
         10.0,
         0.2,
     );
-    ctx.try_set_uniform_matrix_4fv("view", glm::value_ptr(&camera.get_view_matrix()), false)
-        .unwrap();
+    ctx.try_set_uniform(&Uniform::new_mat4fv(
+        "view",
+        camera.get_view_matrix(),
+        false,
+    ))?;
 
     let projection_matrix = glm::perspective(PI / 4.0, aspect_ratio, 0.1, 100.0);
-    ctx.try_set_uniform_matrix_4fv("projection", glm::value_ptr(&projection_matrix), false)
-        .unwrap();
+    ctx.try_set_uniform(&Uniform::new_mat4fv("projection", projection_matrix, false))?;
 
     let identity_matrix = glm::identity::<f32, 4>();
     let mut time_last_draw = window.get_time() as f32;
@@ -134,7 +133,7 @@ fn main() {
     let mut mouse_down = false;
     let mut active_dir_keys = HashSet::<Key>::new();
 
-    let _ = window.run_event_loop(|win, event| {
+    window.run_event_loop(|win, event| {
         let time = win.get_time() as f32;
         let dtime = time - time_last_draw;
 
@@ -156,12 +155,11 @@ fn main() {
                             } else {
                                 camera.move_forward(dtime);
                             }
-                            ctx.try_set_uniform_matrix_4fv(
+                            ctx.try_set_uniform(&Uniform::new_mat4fv(
                                 "view",
-                                glm::value_ptr(&camera.get_view_matrix()),
+                                camera.get_view_matrix(),
                                 false,
-                            )
-                            .unwrap();
+                            ))?;
                         }
 
                         (Key::S, _, Action::Press | Action::Repeat, _) => {
@@ -173,12 +171,11 @@ fn main() {
                             } else {
                                 camera.move_backward(dtime);
                             }
-                            ctx.try_set_uniform_matrix_4fv(
+                            ctx.try_set_uniform(&Uniform::new_mat4fv(
                                 "view",
-                                glm::value_ptr(&camera.get_view_matrix()),
+                                camera.get_view_matrix(),
                                 false,
-                            )
-                            .unwrap();
+                            ))?;
                         }
 
                         (Key::D, _, Action::Press | Action::Repeat, _) => {
@@ -190,12 +187,11 @@ fn main() {
                             } else {
                                 camera.move_right(dtime);
                             }
-                            ctx.try_set_uniform_matrix_4fv(
+                            ctx.try_set_uniform(&Uniform::new_mat4fv(
                                 "view",
-                                glm::value_ptr(&camera.get_view_matrix()),
+                                camera.get_view_matrix(),
                                 false,
-                            )
-                            .unwrap();
+                            ))?;
                         }
 
                         (Key::A, _, Action::Press | Action::Repeat, _) => {
@@ -207,12 +203,11 @@ fn main() {
                             } else {
                                 camera.move_left(dtime);
                             }
-                            ctx.try_set_uniform_matrix_4fv(
+                            ctx.try_set_uniform(&Uniform::new_mat4fv(
                                 "view",
-                                glm::value_ptr(&camera.get_view_matrix()),
+                                camera.get_view_matrix(),
                                 false,
-                            )
-                            .unwrap();
+                            ))?;
                         }
 
                         (Key::W, _, Action::Release, _)
@@ -241,12 +236,11 @@ fn main() {
                     cursor_x = new_cursor_x;
                     cursor_y = new_cursor_y;
                     camera.rotate_to_direction(direction, dtime);
-                    ctx.try_set_uniform_matrix_4fv(
+                    ctx.try_set_uniform(&Uniform::new_mat4fv(
                         "view",
-                        glm::value_ptr(&camera.get_view_matrix()),
+                        camera.get_view_matrix(),
                         false,
-                    )
-                    .unwrap();
+                    ))?;
                 }
                 WindowEvent::FramebufferSize(width, height) => ctx.viewport(0, 0, width, height),
                 _ => (),
@@ -260,15 +254,14 @@ fn main() {
             let mut model_matrix = glm::translate(&identity_matrix, position);
             model_matrix =
                 glm::rotate(&model_matrix, PI * angle / 180.0, &glm::vec3(1.0, 0.3, 0.5));
-            ctx.try_set_uniform_matrix_4fv("model", glm::value_ptr(&model_matrix), false)
-                .unwrap();
-            ctx.try_render().unwrap();
+            ctx.try_set_uniform(&Uniform::new_mat4fv("model", model_matrix, false))?;
+            ctx.try_render()?;
         }
         win.draw();
         time_last_draw = time;
 
         Ok(())
-    });
+    })
 }
 
 const POSITION_ATTR: [f32; 108] = [

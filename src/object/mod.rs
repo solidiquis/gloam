@@ -87,7 +87,9 @@ impl GLObjectRegistry {
             return Err(Error::InvalidObjectDescriptor);
         }
         let idx = Self::idx_from_descriptor(obj_desc);
-        Ok(self.objects[idx].as_ref().unwrap())
+        self.objects[idx]
+            .as_ref()
+            .ok_or(Error::ObjectNotFound(obj_desc))
     }
 
     pub fn get_vertex_object(&self, obj_desc: GLObjectDescriptor) -> Result<&VertexObject> {
