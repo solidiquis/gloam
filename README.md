@@ -1,6 +1,6 @@
 # GLoam
 
-A work-in-progress OpenGL library for Rust built on top of [gl](https://docs.rs/gl/latest/gl/) and [glfw](https://docs.rs/glfw/latest/glfw/).
+A work-in-progress OpenGL library for Rust built on top of [gl](https://docs.rs/gl/latest/gl/) and [glfw](https://docs.rs/glfw/latest/glfw/) (soon to be [winit](https://github.com/rust-windowing/winit)).
 
 ## FAQ
 
