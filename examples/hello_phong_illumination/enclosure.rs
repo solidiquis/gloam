@@ -51,6 +51,7 @@ pub fn init_enclosure(ctx: &mut GLContext, rgb: glm::Vec3) -> Result<Mesh> {
             Uniform::default_3f("cameraPosition"),
             Uniform::default_1f("ambientLightIntensity"),
             Uniform::default_1f("specularLightIntensity"),
+            Uniform::default_1f("shininess"),
         ],
     )
 }

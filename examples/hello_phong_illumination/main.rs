@@ -54,6 +54,8 @@ fn main() -> Result<()> {
         false,
     ))?;
 
+    let enclosure_shininess = 128.0;
+
     let enclosure_position = glm::vec3(0.0, 0.0, 0.0);
     let mut enclosure = init_enclosure(&mut ctx, glm::vec3(0.2, 0.2, 0.2))?;
     let enclosure_model_matrix = glm::translate(
@@ -82,6 +84,10 @@ fn main() -> Result<()> {
     enclosure.set_uniform_on_cpu(Uniform::new_1f(
         "specularLightIntensity",
         specular_light_intensity,
+    ))?;
+    enclosure.set_uniform_on_cpu(Uniform::new_1f(
+        "shininess",
+        enclosure_shininess,
     ))?;
     enclosure.set_uniform_on_cpu(Uniform::new_mat4fv(
         "projectionMatrix",
